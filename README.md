@@ -41,13 +41,18 @@ normal use -- see the degradation note below.
 |---|---|---|
 | `noiseXu.m` | Generate 1/f^alpha noise via Xu (2019) GGM fractional differencing | None |
 | `shapeNoise.m` | Impose an empirical amplitude spectrum onto a chosen phase carrier | None for default carrier; optional Signal Processing / DSP System Toolbox for two of five carrier choices |
-| `estimateIRASA.m` | IRASA spectral-exponent and noise-magnitude estimator | None for the core estimate; optional FieldTrip for a `CompareFieldTrip` cross-validation panel, and an always-available `ComparePMTM` resampling-free independent check (no extra toolbox needed) |
-| `checkSpectralKnee.m` | Lorentzian-vs-fixed spectral knee diagnostic (Preston, Smith & Voytek, 2026) | None (built on `estimateIRASA`) |
+| `estimateIRASA.m` | IRASA spectral-exponent and noise-magnitude estimator | **Signal Processing Toolbox required** (`pmtm` is called directly in the core estimate, not gated behind an optional-feature check); optional FieldTrip for a `CompareFieldTrip` cross-validation panel; `ComparePMTM` needs no toolbox beyond Signal Processing Toolbox (reuses the same PSD the core estimate already computes) |
+| `checkSpectralKnee.m` | Lorentzian-vs-fixed spectral knee diagnostic (Preston, Smith & Voytek, 2026) | **Signal Processing Toolbox required** (built on `estimateIRASA`, inherits its `pmtm` dependency) |
 
-Every function that has an optional toolbox dependency degrades visibly,
-not silently: requesting an optional feature without the underlying
-toolbox installed returns a clearly-flagged unavailable result with a
-warning, rather than erroring outright or pretending to succeed.
+**Signal Processing Toolbox is a genuine hard dependency for `estimateIRASA.m`
+and `checkSpectralKnee.m`** (both call `pmtm` directly and unconditionally) --
+this is a real requirement, not something that degrades gracefully if absent.
+`noiseXu.m` and `shapeNoise.m`'s default path need no toolbox beyond base MATLAB.
+Beyond that hard dependency, every OPTIONAL feature (FieldTrip, `dsp.ColoredNoise`,
+built-in `pinknoise`) degrades visibly, not silently: requesting an optional
+feature without the underlying toolbox installed returns a clearly-flagged
+unavailable result with a warning, rather than erroring outright or pretending
+to succeed.
 
 ## Where `noiseXu` sits relative to MathWorks' own options
 
