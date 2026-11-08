@@ -19,7 +19,7 @@ release v1.1.0 (2026-07-15, MATLAB File Exchange 184251). See
 |---|---|---|
 | `noiseXu` | Generate 1/f^alpha noise by fractional differencing (Xu 2019) | Base MATLAB |
 | `shapeNoise` | Surrogate of a measured signal: its amplitude spectrum on a chosen phase carrier (default `noiseXu`) | Base MATLAB (two optional carriers need Signal Processing / DSP System Toolbox) |
-| `estimateLocalWhittle` | Spectral exponent by prewhitened, band-limited local Whittle; reliable at steep alpha | Base MATLAB |
+| `estimateWhittleAlpha` | Spectral exponent by prewhitened, band-limited local Whittle; reliable at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA spectral exponent and noise magnitude (Wen & Liu 2016) | Signal Processing Toolbox (`pmtm`); optional FieldTrip cross-check |
 | `checkSpectralKnee` | Lorentzian knee vs fixed power law (Preston, Smith & Voytek 2026) | Signal Processing Toolbox |
 
@@ -29,7 +29,7 @@ a warning, never a silent substitute.
 
 ## Which estimator to use
 
-- **Steep spectra (alpha > ~3), or you don't know:** `estimateLocalWhittle`. It
+- **Steep spectra (alpha > ~3), or you don't know:** `estimateWhittleAlpha`. It
   differences the series k times (k chosen from a DFA-3 pre-estimate) so that
   low-frequency power cannot leak into the fitting band, then fits a local
   Whittle likelihood over your band. On exact reference series and on
@@ -41,7 +41,11 @@ a warning, never a silent substitute.
   low-frequency break it can be off by several units, in a direction that
   depends on sampling rate and record length. On noise *with* a break (which
   includes `noiseXu` output and, in our tests, template-subtracted movement
-  residuals) the bias is about +0.1 to +0.3. If in doubt, run both.
+  residuals) the bias is about +0.1 to +0.3. `Prewhiten=k` (difference k
+  times, then recolour) removes the break-free bias (within about +/-0.2 to
+  alpha 5.5); `PSD="welch"` alone only halves it. If in doubt, run both
+  estimators, e.g. `estimateIRASA(x, fs, 1, 20, Prewhiten=k)` with `k` taken
+  from `[~, k] = estimateWhittleAlpha(x, fs, 1, 20)`.
 
 ## What `noiseXu` generates (read this before using alpha > 2)
 
@@ -56,6 +60,9 @@ x = (1 - Phi*B)^(-alpha/2) w, with Phi = 0.99 by default. Two consequences:
   to alpha = 7, but the series is a power law with a break, not a pure
   1/f^alpha process. Score estimators against the GGM spectrum, not nominal
   alpha, and use exact references if you need a pure power law.
+- `Phi = 1` removes the break: plain fractional integration, which in our
+  tests reads the same as exact integrated fGn. Use `noiseXu(N, alpha, sd,
+  fs, Phi=1)` to test an estimator on break-free data.
 
 The break is deliberate (Xu chose it to reduce red-noise leakage), and it makes
 spectral estimators look better on `noiseXu` output than on break-free data.
@@ -91,7 +98,7 @@ directly; untested.
 
 ```matlab
 x = noiseXu(3000, 4.5, 1.0, 240);                 % alpha 4.5, unit SD, 240 Hz
-[a, k] = estimateLocalWhittle(x, 240, 1, 20)      % exponent over 1-20 Hz, and differencing order used
+[a, k] = estimateWhittleAlpha(x, 240, 1, 20)      % exponent over 1-20 Hz, and differencing order used
 [aI, sI] = estimateIRASA(x, 240, 1, 20);          % IRASA for comparison
 s = shapeNoise(myResidual, 240, a);               % surrogate of a measured residual
 r = checkSpectralKnee(myResidual, 240);           % knee or no knee?
@@ -122,7 +129,7 @@ estimator calibration in MATLAB, Python and R. Large run outputs are not in git.
 
 - `noiseXu`: Xu, C. (2019). An easy algorithm to generate colored noise
   sequences. *The Astronomical Journal*, 157(3), 127.
-- `estimateLocalWhittle`: Robinson, P. M. (1995). Gaussian semiparametric
+- `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric
   estimation of long range dependence. *Annals of Statistics*, 23(5),
   1630-1661; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92,
   042925.

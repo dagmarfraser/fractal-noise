@@ -66,10 +66,22 @@ classdef testNoiseXu < matlab.unittest.TestCase
         end
 
         function testRejectsPhiOutOfRange(testCase)
-            testCase.verifyError(@() noiseXu(100, 1.0, 1.0, 100, Phi=1.0), ...
-                "MATLAB:validators:mustBeLessThan");
+            testCase.verifyError(@() noiseXu(100, 1.0, 1.0, 100, Phi=1.01), ...
+                "MATLAB:validators:mustBeLessThanOrEqual");
             testCase.verifyError(@() noiseXu(100, 1.0, 1.0, 100, Phi=0), ...
                 "MATLAB:validators:mustBeGreaterThan");
+        end
+
+        function testPhiOneIsBreakFree(testCase)
+            % Phi = 1 is allowed (v2) and has no GGM break: below the default
+            % break (0.0016*fs = 0.38 Hz at fs 240) the Phi = 1 spectrum keeps
+            % its slope, while Phi = 0.99 flattens. Prototype (rng 21, 10
+            % series): Phi 1 median 3.19, Phi 0.99 median 1.40.
+            rng(21);
+            a1 = arrayfun(@(~) estimateWhittleAlpha(noiseXu(12000, 3, 1, 240, Phi=1), 240, 0.1, 1), 1:10);
+            a9 = arrayfun(@(~) estimateWhittleAlpha(noiseXu(12000, 3, 1, 240), 240, 0.1, 1), 1:10);
+            testCase.verifyLessThan(abs(median(a1) - 3), 0.4);
+            testCase.verifyLessThan(median(a9), 2.2);
         end
 
         function testKnownAlphaRecoveryWithinTolerance(testCase)

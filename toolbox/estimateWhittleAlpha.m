@@ -1,5 +1,5 @@
-function [alphaEst, kUsed, info] = estimateLocalWhittle(x, fs, fLow, fHigh, options)
-%ESTIMATELOCALWHITTLE Prewhitened, band-limited local Whittle estimate of a spectral exponent.
+function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, options)
+%ESTIMATEWHITTLEALPHA Prewhitened, band-limited local Whittle estimate of a spectral exponent.
 %
 % Toolbox wrap of PowerLawSimulationPreReg's alphaPWLW_v001.m and dfaAlpha_v001.m (2026-11-08); the numerics
 % are unchanged from source. Built because whole-record multitaper spectra, and IRASA computed on them
@@ -18,8 +18,8 @@ function [alphaEst, kUsed, info] = estimateLocalWhittle(x, fs, fLow, fHigh, opti
 %   The target is the in-band slope of the true spectrum (what IRASA over the same band also targets).
 %
 % SYNTAX:
-%   alphaEst = estimateLocalWhittle(x, fs, fLow, fHigh)
-%   [alphaEst, kUsed, info] = estimateLocalWhittle(x, fs, fLow, fHigh, K=2)
+%   alphaEst = estimateWhittleAlpha(x, fs, fLow, fHigh)
+%   [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, K=2)
 %
 % INPUTS:
 %   x      - Time series, real vector (finite, non-constant)
@@ -54,9 +54,9 @@ arguments
     options.AlphaBounds (1,2) double = [-2 10]
 end
 x = double(x(:));
-if ~all(isfinite(x)), error('estimateLocalWhittle:nonFinite', 'x contains NaN or Inf.'); end
-if std(x) == 0, error('estimateLocalWhittle:constant', 'x is constant (e.g. an empty residual); no exponent exists.'); end
-if fHigh <= fLow || fHigh >= fs/2, error('estimateLocalWhittle:band', 'Need fLow < fHigh < fs/2 (got [%g %g] Hz, fs %g).', fLow, fHigh, fs); end
+if ~all(isfinite(x)), error('estimateWhittleAlpha:nonFinite', 'x contains NaN or Inf.'); end
+if std(x) == 0, error('estimateWhittleAlpha:constant', 'x is constant (e.g. an empty residual); no exponent exists.'); end
+if fHigh <= fLow || fHigh >= fs/2, error('estimateWhittleAlpha:band', 'Need fLow < fHigh < fs/2 (got [%g %g] Hz, fs %g).', fLow, fHigh, fs); end
 x = x - mean(x);
 info.alphaDFA = dfaAlphaLocal(x, options.DFAOrder);
 if isempty(options.K)
@@ -70,14 +70,14 @@ I = abs(fft((xd - mean(xd)) .* w)).^2 / sum(w.^2);
 f = (0:N-1)' * fs / N;  m = f >= fLow & f <= fHigh & f < fs/2;
 info.nBins = nnz(m);
 if info.nBins < 10
-    error('estimateLocalWhittle:band', 'Only %d periodogram bins in [%g %g] Hz (N = %d, fs = %g).', info.nBins, fLow, fHigh, N, fs);
+    error('estimateWhittleAlpha:band', 'Only %d periodogram bins in [%g %g] Hz (N = %d, fs = %g).', info.nBins, fLow, fHigh, N, fs);
 end
 lam = 2*pi*f(m)/fs;  Ib = I(m) ./ (2 - 2*cos(lam)).^kUsed;
 obj = @(a) log(mean(lam.^a .* Ib)) - a * mean(log(lam));
 lo = options.AlphaBounds(1);  hi = options.AlphaBounds(2);
 [alphaEst, info.objective, flag] = fminbnd(obj, lo, hi, optimset('TolX', 1e-6));
 if flag ~= 1 || alphaEst - lo < 1e-3 || hi - alphaEst < 1e-3
-    error('estimateLocalWhittle:bound', 'Optimiser on its bound or not converged (alpha = %.4f, bounds [%g %g], flag %d).', alphaEst, lo, hi, flag);
+    error('estimateWhittleAlpha:bound', 'Optimiser on its bound or not converged (alpha = %.4f, bounds [%g %g], flag %d).', alphaEst, lo, hi, flag);
 end
 end
 
@@ -85,7 +85,7 @@ function a = dfaAlphaLocal(x, order)
 % DFA of the given order as a spectral exponent alpha = 2*Hfluct - 1 (copy of dfaAlpha_v001; MATLAB twin of the
 % fractal-noise stage-1 R dfaN): 15 log-spaced box sizes 10..N/10, non-overlapping boxes, OLS of log F on log s.
 y = cumsum(x - mean(x));  n = numel(y);
-if n < 100, error('estimateLocalWhittle:short', 'Series too short for the DFA pre-estimate (N = %d, need >= 100).', n); end
+if n < 100, error('estimateWhittleAlpha:short', 'Series too short for the DFA pre-estimate (N = %d, need >= 100).', n); end
 s = unique(round(exp(linspace(log(10), log(floor(n/10)), 15))));
 F = zeros(size(s));
 for i = 1:numel(s)

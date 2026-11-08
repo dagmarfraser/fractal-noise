@@ -8,6 +8,40 @@ session history, which is not this toolbox's situation. Each function's
 docstring states which specific internal vintage it was extracted from, so
 that history is not lost, just relocated to prose rather than the filename.
 
+## v1.2.0 -- unreleased (branch joss-v2)
+
+### New: `estimateWhittleAlpha`
+
+Spectral exponent by prewhitened, band-limited local Whittle (Robinson
+1995): difference k times (k from a DFA-3 pre-estimate, or given as `K`),
+Hann periodogram, recolour, Whittle objective. Base MATLAB only. Errors
+loudly on non-finite, constant or too-short input, a band with too few
+bins, or an optimiser stuck on its bound. Bias within about +/-0.2 to
+alpha 6.5 on exact references and on `noiseXu` output
+(`validation/stage1`, `validation/irasaOptions`).
+
+### `noiseXu`: `Phi = 1` now allowed
+
+`Phi` range widened from (0, 1) to (0, 1]. `Phi = 1` is plain fractional
+integration with no GGM break; its estimator readings match exact
+integrated fGn (`validation/irasaOptions/checkIRASAOptions_v001`). The
+default stays 0.99, so existing calls are unchanged. Help text now states
+the break frequency, (1 - Phi)*fs/(2*pi), and drops the old "verified to
+6" claim.
+
+### `estimateIRASA`: `PSD` and `Prewhiten` options
+
+`PSD="welch"` swaps every internal PSD from pmtm to Hann-window Welch.
+`Prewhiten=k` differences k times before IRASA and recolours the result.
+Defaults (`"pmtm"`, 0) are bit-identical to v1.1.0. Reason: on break-free
+spectra the default overshoots from alpha 3.5 at fs 240 (+1.7 to +2.1 at
+alpha 4.5) and collapses at alpha 5.5, fs 100; on noise with a
+low-frequency break (what `noiseXu` makes by default, and what earlier
+benchmarks used) it is within +/-0.1. Welch alone halves the error;
+`Prewhiten` removes it (within +/-0.23 throughout). The help text's RANGE
+section replaces the v1.1.0 "verified [-2, 6]" claim, and notes that
+`ComparePMTM` shares the default's PSD and so is not an independent check.
+
 ## v1.1.0 -- 2026-07-15
 
 ### Naming rationale confirmed against a second MathWorks option: `fractalcoef`
