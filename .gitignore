@@ -36,3 +36,6 @@ codegen/
 # Scratch/dev workspace for .mlx source drafts and conversion round-trip
 # verification -- not part of the shipped toolbox
 .mlxscratch/
+
+# fractal-noise validation run outputs (large; released via Zenodo, not git)
+validation/**/runs/
