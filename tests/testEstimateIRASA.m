@@ -2,7 +2,7 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
 %TESTESTIMATEIRASA Unit tests for estimateIRASA.m.
 %
 % Toolbox: fractalnoise
-% Covers: output arities, Hset override, the CompareFieldTrip
+% Covers: output arities, Hset override, the PSD and Prewhiten options (v2), the CompareFieldTrip
 % degraded-mode path, and the ComparePMTM resampling-free comparison
 % (including pRaw plumbing source-equivalence against a direct pmtm
 % call). All of the above use the toolbox's own noiseXu as the test
@@ -163,6 +163,39 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
             pFit = polyfit(log10(fDirect(fitMask)), log10(pDirect(fitMask)), 1);
             alphaDirect = -pFit(1);
             testCase.verifyEqual(pmInfo.alphaPM, alphaDirect, "AbsTol", 1e-12);
+        end
+
+        function testNewOptionDefaultsAreUnchanged(testCase)
+            rng(12);  x = noiseXu(2000, 3.0, 1.0, 240);
+            [a1, s1, p1, f1] = estimateIRASA(x, 240, 1, 20);
+            [a2, s2, p2, f2] = estimateIRASA(x, 240, 1, 20, PSD="pmtm", Prewhiten=0);
+            testCase.verifyEqual([a1 s1], [a2 s2]);
+            testCase.verifyTrue(isequaln(p1, p2));
+            testCase.verifyEqual(f1, f2);
+        end
+
+        function testPrewhitenFixesBreakFreeOvershoot(testCase)
+            % checkIRASAOptions_v001: break-free alpha 4.5 at fs 240, N 3000 reads
+            % about +2.1 high by default and within 0.1 with Prewhiten=2.
+            rng(13);
+            X = cell2mat(arrayfun(@(~) noiseXu(3000, 4.5, 1, 240, Phi=1), 1:10, 'UniformOutput', false));
+            aDef = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20), 1:10);
+            aPw  = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20, Prewhiten=2), 1:10);
+            testCase.verifyGreaterThan(median(aDef), 5.5, "Default overshoot on break-free noise has changed; update the RANGE help text.");
+            testCase.verifyLessThan(abs(median(aPw) - 4.5), 0.25);
+        end
+
+        function testWelchRunsAndReturnsWelchGrid(testCase)
+            rng(14);  x = noiseXu(3000, 2.0, 1.0, 240);
+            [a, s, p, f] = estimateIRASA(x, 240, 1, 20, PSD="welch");
+            testCase.verifyTrue(isfinite(a) && isfinite(s));
+            testCase.verifyEqual(numel(p), numel(f));
+            testCase.verifyEqual(numel(f), 1024 / 2 + 1);   % nfft = 1024 for a 1024-sample segment
+        end
+
+        function testPrewhitenWithFieldTripErrors(testCase)
+            testCase.verifyError(@() estimateIRASA(randn(500, 1), 100, 1, 20, Prewhiten=1, CompareFieldTrip=true), ...
+                "estimateIRASA:prewhitenFieldTrip");
         end
     end
 end

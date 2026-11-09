@@ -21,24 +21,30 @@ function noise = noiseXu(N, alpha, amplitude, fs, options)
 %   fs        - Sampling frequency in Hz, retained for interface
 %               compatibility with generateCustomNoise_v004; not used in
 %               the generation maths itself (default 1.0)
-%   Phi       - Name-value. GGM break frequency parameter, range (0,1)
-%               exclusive. Default 0.99 (red-leakage mitigation per Xu
-%               2019 Appendix A). Only override this if you know why.
+%   Phi       - Name-value. GGM parameter, range (0, 1]. Default 0.99
+%               (red-leakage mitigation per Xu 2019 Appendix A). Phi < 1
+%               gives a generalised Gauss-Markov spectrum: flat below a
+%               break at f_b = (1 - Phi)*fs/(2*pi) (about 0.0016*fs at
+%               the default), power law above it. Phi = 1 gives pure
+%               (Type II) fractional integration with no break; its
+%               spectrum matches exact k-fold integrated fGn (see
+%               validation/irasaOptions). Choose Phi = 1 when you need a
+%               break-free power law down to the lowest frequencies, for
+%               example to test an estimator's low-frequency behaviour.
 %
 % OUTPUT:
 %   noise     - Column vector, length N, with std(noise) numerically
 %               equal to amplitude (post-hoc normalised; see Notes)
 %
-% VERIFIED RANGE (Finding #100, PowerLawSimulationPreReg):
-%   This generator is numerically stable (no NaN/Inf output) for alpha
-%   in the range [-2, 7]. That is NOT the same claim as "alpha=7 is
-%   independently measurable" -- three-way estimator agreement
-%   (homebrew IRASA, FieldTrip IRASA, direct pmtm slope fit) verified
-%   INDEPENDENT RECOVERABILITY only up to alpha=6. At alpha=7 the
-%   three estimators diverge from one another, consistent with an
-%   information-limit at typical trial lengths rather than a generator
-%   defect. Treat alpha=7 output as usable for stress-testing pipeline
-%   robustness, not as ground truth for alpha-recovery validation.
+% RANGE:
+%   Numerically stable (no NaN/Inf) for alpha in [-2, 7]. With the
+%   default Phi the output is a GGM process: a power law only above the
+%   break, and Xu (2019) presents it as range-limited (alpha up to about
+%   4). Whether a given estimator recovers alpha from it depends on the
+%   estimator, the band, fs and N, not on the generator alone: break
+%   noise (Phi < 1) is markedly more forgiving for multitaper IRASA than
+%   break-free noise (Phi = 1). Validate estimators against Phi = 1 or
+%   an exact reference as well as the default.
 %
 % NOTES:
 %   - No alpha-range validation is enforced here by design: this is a
@@ -59,8 +65,9 @@ function noise = noiseXu(N, alpha, amplitude, fs, options)
 %   brownNoise = noiseXu(1000, 2.0, 1.5, 60);
 %   pinkNoise  = noiseXu(500, 1.0);
 %   customPhi  = noiseXu(1000, 3.0, 1.0, 100, Phi=0.995);
+%   noBreak    = noiseXu(3000, 4.5, 1.0, 240, Phi=1);
 %
-% See also: shapeNoise, estimateIRASA
+% See also: shapeNoise, estimateIRASA, estimateWhittleAlpha
 %
 % Toolbox: fractalnoise
 % Extracted from: src/functions/XuNoise_v002.m + generateCustomNoise_v004.m
@@ -71,7 +78,7 @@ arguments
     alpha (1, 1) double
     amplitude (1, 1) double {mustBeNonnegative} = 1.0
     fs (1, 1) double {mustBePositive} = 1.0 %#ok<INUSA> intentionally unused; kept for call-site compatibility with generateCustomNoise_v004
-    options.Phi (1, 1) double {mustBeGreaterThan(options.Phi, 0), mustBeLessThan(options.Phi, 1)} = 0.99
+    options.Phi (1, 1) double {mustBeGreaterThan(options.Phi, 0), mustBeLessThanOrEqual(options.Phi, 1)} = 0.99
 end
 
 phi = options.Phi;
@@ -115,7 +122,7 @@ function dx = xuGgmFracDiff(x, d, phi)
 % INPUTS:
 %   x   - Input white noise sequence, column vector
 %   d   - Fractional memory parameter (alpha/2)
-%   phi - Break frequency parameter, (0,1) exclusive
+%   phi - GGM parameter, (0, 1]; phi = 1 is plain fractional integration
 %
 % OUTPUT:
 %   dx  - Colored noise sequence with GGM spectral characteristics

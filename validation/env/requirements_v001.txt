@@ -1,0 +1,16 @@
+# fractal-noise validation, Python arm. Pinned 2026-11-07 against M5 (Homebrew Python 3.14.5).
+# Install into a dedicated venv:
+#   python3 -m venv ~/venvs/fnval && ~/venvs/fnval/bin/pip install -r requirements_v001.txt
+numpy==2.5.1
+scipy==1.18.0
+pandas==2.3.3
+matplotlib==3.11.0      # pyrasa imports it unconditionally (RValidationMethodology gotcha 6)
+joblib==1.6.0
+pyrasa==1.1.1
+colorednoise==2.2.0
+neurodsp==2.3.0
+fooof==1.1.1            # stable spectral-parameterisation; specparam 2.0 is still rc only
+yasa==0.8.1
+nolds==0.6.3
+fbm==0.3.0              # Davies-Harte fGn/fBm (stochastic dropped: requires Python <3.11)
+nolitsa @ git+https://github.com/manu-mannattil/nolitsa.git@447cd5e44332e0b2071398c2d5ac7fd80175c544   # not on PyPI; commit pinned 2026-11-07
