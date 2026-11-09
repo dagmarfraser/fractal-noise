@@ -7,6 +7,7 @@ authors:
     given-names: Dagmar Scott
     affiliation: University of Birmingham
     email: d.s.fraser@bham.ac.uk
+    orcid: "https://orcid.org/0000-0002-9241-7772"
 repository-code: "https://github.com/dagmarfraser/fractal-noise"
 url: "https://www.mathworks.com/matlabcentral/fileexchange/184251"
 license: MIT
