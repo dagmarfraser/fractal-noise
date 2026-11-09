@@ -145,6 +145,13 @@ The functions were first written for a kinematics project
 ([velocity-curvature-power-law-simulation](https://github.com/dagmarfraser/velocity-curvature-power-law-simulation));
 each docstring names its source file. The toolbox has no dependency on it.
 
+## Getting help and contributing
+
+Questions and bug reports: open an issue at
+<https://github.com/dagmarfraser/fractal-noise/issues> (include your MATLAB release, `ver` output and a
+minimal seeded example). Pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). To cite the
+toolbox, use [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button).
+
 ## License
 
 MIT (see `license.txt`), except `external/fftnoise/`, which keeps its BSD

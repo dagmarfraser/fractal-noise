@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "fractal-noise: a MATLAB toolbox for generating, shaping and estimating 1/f^alpha noise"
+type: software
+authors:
+  - family-names: Fraser
+    given-names: Dagmar Scott
+    affiliation: University of Birmingham
+    email: d.s.fraser@bham.ac.uk
+repository-code: "https://github.com/dagmarfraser/fractal-noise"
+url: "https://www.mathworks.com/matlabcentral/fileexchange/184251"
+license: MIT
+version: 1.2.0
+date-released: 2026-11-09
+keywords:
+  - colored noise
+  - 1/f noise
+  - spectral exponent
+  - surrogate data
+  - IRASA
+  - local Whittle
+  - MATLAB

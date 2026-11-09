@@ -1,0 +1,12 @@
+{
+  "title": "fractal-noise: a MATLAB toolbox for generating, shaping and estimating 1/f^alpha noise",
+  "upload_type": "software",
+  "creators": [
+    {"name": "Fraser, Dagmar Scott", "affiliation": "University of Birmingham"}
+  ],
+  "license": "MIT",
+  "keywords": ["colored noise", "1/f noise", "spectral exponent", "surrogate data", "IRASA", "local Whittle", "MATLAB"],
+  "related_identifiers": [
+    {"identifier": "https://www.mathworks.com/matlabcentral/fileexchange/184251", "relation": "isIdenticalTo", "scheme": "url"}
+  ]
+}
