@@ -27,7 +27,7 @@ end
 % peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
 fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
 warnState = warning("off", "estimateIRASA:legacyResampling");
-cleanupWarn = onCleanup(@() warning(warnState)); %#ok<NASGU>
+cleanupWarn = onCleanup(@() warning(warnState));
 here = fileparts(mfilename("fullpath"));
 addpath(fullfile(here, "..", "exactReference"));
 if isempty(which('ft_defaults')); addpath(opts.FieldTripDir); ft_defaults; end

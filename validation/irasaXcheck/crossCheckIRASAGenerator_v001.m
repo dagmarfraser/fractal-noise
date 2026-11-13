@@ -27,7 +27,7 @@ end
 % peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
 fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
 warnState = warning("off", "estimateIRASA:legacyResampling");
-cleanupWarn = onCleanup(@() warning(warnState)); %#ok<NASGU>
+cleanupWarn = onCleanup(@() warning(warnState));
 here = fileparts(mfilename('fullpath'));
 stage1 = fullfile(here, "..", "stage1");  exactDir = fullfile(here, "..", "exactReference");
 pre = char(opts.PreRegFunctions); if startsWith(pre, '~'); pre = [char(java.lang.System.getProperty('user.home')) pre(2:end)]; end
