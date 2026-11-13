@@ -12,6 +12,12 @@ arguments
     opts.Tol (1,1) double = 1e-9
     opts.FieldTripDir (1,1) string = fullfile(getenv("HOME"), "Library/CloudStorage/Dropbox/MATLAB/fieldtrip-20251201")
 end
+% fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
+% which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
+% peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
+fprintf("Note: estimateIRASA pinned to Resampling=\"legacy\" (v1.x behaviour); legacy warnings suppressed in this session.\n");
+warnState = warning("off", "estimateIRASA:legacyResampling");
+cleanupWarn = onCleanup(@() warning(warnState)); %#ok<NASGU>
 here = fileparts(mfilename("fullpath"));
 % Expand a leading ~ ourselves: system() quotes the path, so the shell never does.
 opts.PythonExe = regexprep(opts.PythonExe, "^~", getenv("HOME"));
@@ -92,7 +98,7 @@ if ~okR || ~isfinite(aR) || abs(aR - aM) > opts.Tol; fail(end+1) = "R round trip
 % Existence/finiteness only; agreement is the validation's job (V1e), not this smoke test's.
 if ~isempty(which('noiseXu')) && ~isempty(which('ft_defaults'))
     rng(2);  fs = 100;  xn = noiseXu(4096, 2, 1, fs);
-    [aHB, ~, ~, ~, ftI, pmI] = estimateIRASA(xn(:), fs, 1, 20, CompareFieldTrip=true, ComparePMTM=true);
+    [aHB, ~, ~, ~, ftI, pmI] = estimateIRASA(xn(:), fs, 1, 20, CompareFieldTrip=true, ComparePMTM=true, Resampling="legacy");
     report.irasa = table(2, aHB, ftI.alphaFT, pmI.alphaPM, VariableNames=["target","HB","FT","PM"]);
     disp(report.irasa)
     if any(~isfinite([aHB ftI.alphaFT pmI.alphaPM])); fail(end+1) = "IRASA three-way not finite: " + ftI.message + " " + pmI.message; end

@@ -22,6 +22,12 @@ arguments
     opts.PreRegFunctions (1,1) string = "~/Library/CloudStorage/Dropbox/Brain2Bee/PowerLawSimulationPreReg/src/functions"
     opts.OutDir (1,1) string = ""
 end
+% fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
+% which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
+% peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
+fprintf("Note: estimateIRASA pinned to Resampling=\"legacy\" (v1.x behaviour); legacy warnings suppressed in this session.\n");
+warnState = warning("off", "estimateIRASA:legacyResampling");
+cleanupWarn = onCleanup(@() warning(warnState)); %#ok<NASGU>
 here = fileparts(mfilename('fullpath'));
 stage1 = fullfile(here, "..", "stage1");  exactDir = fullfile(here, "..", "exactReference");
 pre = char(opts.PreRegFunctions); if startsWith(pre, '~'); pre = [char(java.lang.System.getProperty('user.home')) pre(2:end)]; end
@@ -82,7 +88,7 @@ for r = 1:n
     end
     try, alpha_hat(2*r-1) = iraAlphaSigma_v001(x, cl.fs, opts.Band(1), opts.Band(2), opts.Hset);
     catch ME, status(2*r-1) = "FAIL: " + ME.message; end
-    try, alpha_hat(2*r) = estimateIRASA(x, cl.fs, opts.Band(1), opts.Band(2));
+    try, alpha_hat(2*r) = estimateIRASA(x, cl.fs, opts.Band(1), opts.Band(2), Resampling="legacy");
     catch ME, status(2*r) = "FAIL: " + ME.message; end
 end
 nr = 2*n;
