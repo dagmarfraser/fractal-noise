@@ -15,7 +15,7 @@ end
 % fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
 % which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
 % peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
-fprintf("Note: estimateIRASA pinned to Resampling=\"legacy\" (v1.x behaviour); legacy warnings suppressed in this session.\n");
+fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
 warnState = warning("off", "estimateIRASA:legacyResampling");
 cleanupWarn = onCleanup(@() warning(warnState)); %#ok<NASGU>
 here = fileparts(mfilename("fullpath"));

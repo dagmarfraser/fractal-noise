@@ -7,13 +7,13 @@
         [
             {"name":"N", "kind":"required", "type":["numeric", "positive", "integer", "scalar"]},
             {"name":"alpha", "kind":"required", "type":["numeric", "scalar"]},
-            {"name":"amplitude", "kind":"ordered", "type":["numeric", "nonnegative", "scalar"]},
+            {"name":"amplitude", "kind":"ordered", "type":["numeric", ">=0", "scalar"]},
             {"name":"fs", "kind":"ordered", "type":["numeric", "positive", "scalar"]},
             {"name":"Phi", "kind":"namevalue", "type":["numeric", "scalar"]}
         ],
         "outputs":
         [
-            {"name":"noise", "type":["numeric", "column"]}
+            {"name":"noise", "type":["double", "column"]}
         ]
     },
 
@@ -28,7 +28,7 @@
         ],
         "outputs":
         [
-            {"name":"n", "type":["numeric", "column"]}
+            {"name":"n", "type":["double", "column"]}
         ]
     },
 
@@ -49,10 +49,10 @@
         ],
         "outputs":
         [
-            {"name":"alphaEst", "type":["numeric", "scalar"]},
-            {"name":"sigmaEst", "type":["numeric", "scalar"]},
-            {"name":"pFractal", "type":["numeric", "column"]},
-            {"name":"fVec", "type":["numeric", "column"]},
+            {"name":"alphaEst", "type":["double", "scalar"]},
+            {"name":"sigmaEst", "type":["double", "scalar"]},
+            {"name":"pFractal", "type":["double", "column"]},
+            {"name":"fVec", "type":["double", "column"]},
             {"name":"ftInfo", "type":["struct", "scalar"]},
             {"name":"pmInfo", "type":["struct", "scalar"]}
         ]
@@ -73,8 +73,8 @@
         ],
         "outputs":
         [
-            {"name":"alphaEst", "type":["numeric", "scalar"]},
-            {"name":"kUsed", "type":["numeric", "scalar"]},
+            {"name":"alphaEst", "type":["double", "scalar"]},
+            {"name":"kUsed", "type":["double", "scalar"]},
             {"name":"info", "type":["struct", "scalar"]}
         ]
     },
@@ -87,7 +87,7 @@
             {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
             {"name":"FitBandLow", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
             {"name":"WideBandLow", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
-            {"name":"FitBandHigh", "kind":"namevalue", "type":["numeric", "nonnegative", "scalar"]},
+            {"name":"FitBandHigh", "kind":"namevalue", "type":["numeric", ">=0", "scalar"]},
             {"name":"Hset", "kind":"namevalue", "type":["numeric", "vector"]},
             {"name":"ExtraKneeStarts", "kind":"namevalue", "type":["numeric", "vector"]},
             {"name":"Resampling", "kind":"namevalue", "type":["choices={'irasa','legacy'}"]}
