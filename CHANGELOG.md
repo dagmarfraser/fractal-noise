@@ -40,6 +40,34 @@ move to `f0*h` and `f0/h`, and the median rejects them (same signal:
 - `Resampling="legacy"` reproduces 1.x bit for bit and warns on every
   call (`estimateIRASA:legacyResampling`). It is not IRASA.
 
+### Breaking: `shapeNoise` swaps on the differenced series by default
+
+**Problem.** `shapeNoise` copied `abs(fft(resid))` onto the carrier's
+phase. For a steep series whose ends do not meet, that magnitude is
+mostly end-mismatch leakage (f^-2) above the lowest bins. The surrogate
+stayed steep only when the carrier's own end jump supplied matching
+phases. With the `"xu"` carrier, 3 to 25% of surrogates between alpha 3
+and 6 came out more than 0.5 shallower than `resid` (22% at alpha 3.5,
+fs 133, N 3000; `validation/checkShapeNoisePrewhiten_v001.m`). At
+alpha 4, carriers in the bottom third for end mismatch gave 58% shallow
+surrogates and the rest 1% or none
+(`validation/checkShapeNoiseMechanism_v001.m`). Medians were unaffected,
+which is why mean-based checks did not show it.
+
+**Fix.** New option `Prewhiten`, `"auto"` (default) or 0..3: difference
+`resid` and the carrier k times, swap there, integrate k times, centre
+on `mean(resid)` and rescale to `std(resid)`. `"auto"` uses
+k = min(3, floor((alpha + 1)/2)). Share more than 0.5 shallow: 0% in
+every cell at N 3000, at most 2% at N 1000.
+
+**What changes for callers**
+
+- Output differs from 1.x for alpha of 1 and above; identical below.
+- With `Prewhiten` above 0, `abs(fft(n))` no longer equals
+  `abs(fft(resid))`; the k-th differences match instead.
+- `Prewhiten=0` reproduces 1.x, and the source `shapeXu_local`, bit for
+  bit.
+
 ### `checkSpectralKnee`
 
 - New `Resampling` option, passed through to `estimateIRASA`; default
@@ -52,7 +80,9 @@ move to `f0*h` and `f0/h`, and the median rejects them (same signal:
 New: default is `"irasa"`; `"legacy"` warns; peak removed under the
 default and kept under `"legacy"` (both PSDs); agreement on peak-free
 noise; steep break-free noise with `Prewhiten`; the NaN mask; the band
-error; three `checkSpectralKnee` tests for the new option. Tests that pin
+error; three `checkSpectralKnee` tests for the new option; five
+`shapeNoise` tests (legacy identity at `Prewhiten=0`, tail removed at
+alpha 4, std and mean kept, `"auto"` equals 0 below alpha 1, error paths). Tests that pin
 1.x numbers call `"legacy"` explicitly.
 
 ### Documentation
@@ -60,8 +90,10 @@ error; three `checkSpectralKnee` tests for the new option. Tests that pin
 `doc/WhyHomebrewIRASA` rewritten: its earlier argument rested on three
 estimators agreeing, two of which were the same computation, so the
 "verified alpha -2 to 6" claim is withdrawn. `doc/GettingStarted` updated
-(links point to the shipped .m pages). README and
-`examples/CompareFftnoiseVsShapedXu`: TODO before release.
+(links point to the shipped .m pages; gains `estimateWhittleAlpha`).
+README rewritten to lead with what the toolbox is for, with an
+"Upgrading from 1.x" section. `examples/CompareFftnoiseVsShapedXu` gains
+reference and Whittle columns and now prints line breaks.
 
 ### Test infrastructure
 

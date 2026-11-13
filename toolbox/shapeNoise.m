@@ -10,9 +10,13 @@ function n = shapeNoise(resid, fs, alpha, options)
 % MATLAB's built-in pinknoise, plain white noise, or any custom generator,
 % not just Xu.
 %
-% CONSTRUCTION (unchanged from source):
+% CONSTRUCTION with Prewhiten = 0 (unchanged from source):
 %   F_shaped = |FFT(resid)| .* exp(1i*angle(FFT(carrier)))
 %   n        = real(ifft(F_shaped)), rescaled so std(n) == std(resid)
+% CONSTRUCTION with Prewhiten = k > 0 (new in v2.0.0):
+%   the same swap applied to diff(resid, k) and diff(carrier, k), then
+%   integrated k times (cumsum), centred on mean(resid) and rescaled so
+%   std(n) == std(resid).
 % Conjugate symmetry is automatic: |FFT(resid)| is symmetric and
 % angle(FFT(carrier)) is antisymmetric for a real carrier, so F_shaped is
 % a valid real-signal spectrum. real() guards residual numerical asymmetry.
@@ -24,6 +28,7 @@ function n = shapeNoise(resid, fs, alpha, options)
 %   n = shapeNoise(resid, fs, alpha, PhaseSource="pinknoise")
 %   n = shapeNoise(resid, fs, alpha, PhaseSource="dsp")
 %   n = shapeNoise(resid, fs, alpha, PhaseSource=@myCarrierFcn)
+%   n = shapeNoise(___, Prewhiten=k)             % k = "auto" or 0..3
 %
 % INPUTS:
 %   resid - Empirical residual time series, real column vector. Its
@@ -49,6 +54,23 @@ function n = shapeNoise(resid, fs, alpha, options)
 %                   clamped to the nearest bound, with a warning.
 %       function handle @(M, fs, alpha) -> real Mx1 vector. Most general
 %                   option; must return a real column vector of length M.
+%   Prewhiten - Name-value, "auto" or an integer 0..3. Default "auto".
+%       Number of times resid and the carrier are differenced before the
+%       magnitude/phase swap. "auto" uses k = min(3, floor((alpha + 1)/2))
+%       (0 below alpha = 1), so alpha must then be a rough exponent of
+%       resid whatever the carrier.
+%       WHY: abs(fft(resid)) of a steep series whose ends do not meet is,
+%       above the lowest bins, mostly end-mismatch leakage (f^-2). With
+%       Prewhiten = 0 the surrogate inherits that magnitude and stays
+%       steep only when the carrier's own end jump supplies matching
+%       phases. Measured (fs 133, N 3000, 1-20 Hz, 100 seeds, "xu"
+%       carrier): 21, 23, 13 and 10 percent of surrogates at alpha 3.5,
+%       4, 4.5 and 5 came out more than 0.5 shallower than resid; with
+%       "auto", none did. With Prewhiten = k > 0 the surrogate's
+%       k-th difference has the magnitude spectrum of resid's k-th
+%       difference; abs(fft(n)) itself no longer equals abs(fft(resid)).
+%       Prewhiten = 0 is the construction of v1.2.0 and earlier, and of
+%       the source shapeXu_local, bit for bit.
 %
 % OUTPUT:
 %   n - Real surrogate column vector, length numel(resid), with
@@ -63,6 +85,8 @@ function n = shapeNoise(resid, fs, alpha, options)
 %     (see PowerLawSimulationPreReg Finding #67 and the
 %     alpha-preservation checks referenced there). This function performs
 %     the construction; it does not itself validate alpha preservation.
+%     For the "xu" carrier see Prewhiten above, and
+%     validation/checkShapeNoiseMechanism_v001.m.
 %
 % See also: noiseXu, estimateIRASA
 %
@@ -75,6 +99,7 @@ arguments
     fs (1, 1) double {mustBePositive}
     alpha (1, 1) double
     options.PhaseSource = "xu"
+    options.Prewhiten = "auto"
 end
 
 resid = resid(:);
@@ -86,6 +111,7 @@ if sig == 0
     return
 end
 
+k = prewhitenOrder(options.Prewhiten, alpha, M);   % validated before any random numbers are drawn
 carrier = shapeNoiseCarrier(options.PhaseSource, M, fs, alpha, sig);
 
 if ~isreal(carrier) || ~iscolumn(carrier) || numel(carrier) ~= M
@@ -93,16 +119,48 @@ if ~isreal(carrier) || ~iscolumn(carrier) || numel(carrier) ~= M
         "Phase carrier must return a real column vector of length %d.", M);
 end
 
-empiricalMagnitude = abs(fft(resid));
-carrierSpectrum = fft(carrier);
-shapedSpectrum = empiricalMagnitude .* exp(1i * angle(carrierSpectrum));
-n = real(ifft(shapedSpectrum));
+if k == 0
+    empiricalMagnitude = abs(fft(resid));
+    carrierSpectrum = fft(carrier);
+    shapedSpectrum = empiricalMagnitude .* exp(1i * angle(carrierSpectrum));
+    n = real(ifft(shapedSpectrum));
 
-carrierStd = std(n, 0, 1);
-if carrierStd > 0
-    n = n * (sig / carrierStd);
+    carrierStd = std(n, 0, 1);
+    if carrierStd > 0
+        n = n * (sig / carrierStd);
+    end
+else
+    n = real(ifft(abs(fft(diff(resid, k))) .* exp(1i * angle(fft(diff(carrier, k))))));
+    for q = 1:k
+        n = cumsum([0; n]);
+    end
+    shapedStd = std(n, 0, 1);
+    if shapedStd == 0 || ~isfinite(shapedStd)
+        error("shapeNoise:PrewhitenDegenerate", ...
+            "Prewhiten=%d gave a surrogate with std %g. Use a smaller Prewhiten.", k, shapedStd);
+    end
+    n = (n - mean(n)) * (sig / shapedStd) + mean(resid);
 end
 
+end
+
+function k = prewhitenOrder(prewhiten, alpha, M)
+%PREWHITENORDER Resolve the Prewhiten option to an integer differencing order.
+if (isstring(prewhiten) || ischar(prewhiten)) && isscalar(string(prewhiten)) && lower(string(prewhiten)) == "auto"
+    if ~isfinite(alpha)
+        error("shapeNoise:PrewhitenAutoNeedsAlpha", ...
+            "Prewhiten=""auto"" needs a finite alpha; got %g. Pass Prewhiten=k explicitly.", alpha);
+    end
+    k = min(3, max(0, floor((alpha + 1) / 2)));
+elseif isnumeric(prewhiten) && isscalar(prewhiten) && ismember(prewhiten, 0:3)
+    k = double(prewhiten);
+else
+    error("shapeNoise:InvalidPrewhiten", "Prewhiten must be ""auto"" or an integer 0..3.");
+end
+if k > 0 && M - k < 8
+    error("shapeNoise:TooShortForPrewhiten", ...
+        "resid has %d samples; Prewhiten=%d needs at least %d.", M, k, k + 8);
+end
 end
 
 function carrier = shapeNoiseCarrier(phaseSource, M, fs, alpha, sig)

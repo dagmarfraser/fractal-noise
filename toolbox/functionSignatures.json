@@ -24,7 +24,8 @@
             {"name":"resid", "kind":"required", "type":["numeric", "column"]},
             {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
             {"name":"alpha", "kind":"required", "type":["numeric", "scalar"]},
-            {"name":"PhaseSource", "kind":"namevalue", "type":[["choices={'xu','white','pinknoise','dsp'}"], "function_handle"]}
+            {"name":"PhaseSource", "kind":"namevalue", "type":[["choices={'xu','white','pinknoise','dsp'}"], "function_handle"]},
+            {"name":"Prewhiten", "kind":"namevalue", "type":[["choices={'auto'}"], ["numeric", "integer", "scalar", ">=0", "<=3"]]}
         ],
         "outputs":
         [
