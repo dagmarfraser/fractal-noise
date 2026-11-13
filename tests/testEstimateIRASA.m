@@ -54,7 +54,8 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
             fLow = 1.0; fHigh = 30.0; fs = 120;
 
             [a1, s1, p1, f1] = iraAlphaSigma_v003(x, fs, fLow, fHigh);
-            [a2, s2, p2, f2] = estimateIRASA(x, fs, fLow, fHigh);
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("estimateIRASA:legacyResampling"));
+            [a2, s2, p2, f2] = estimateIRASA(x, fs, fLow, fHigh, Resampling="legacy");   % the source is the legacy form
 
             testCase.verifyEqual(a1, a2);
             testCase.verifyEqual(s1, s2);
@@ -177,10 +178,12 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
         function testPrewhitenFixesBreakFreeOvershoot(testCase)
             % checkIRASAOptions_v001: break-free alpha 4.5 at fs 240, N 3000 reads
             % about +2.1 high by default and within 0.1 with Prewhiten=2.
+            % Measured with the pre-2.0 resampling, so it is pinned to Resampling="legacy".
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("estimateIRASA:legacyResampling"));
             rng(13);
             X = cell2mat(arrayfun(@(~) noiseXu(3000, 4.5, 1, 240, Phi=1), 1:10, 'UniformOutput', false));
-            aDef = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20), 1:10);
-            aPw  = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20, Prewhiten=2), 1:10);
+            aDef = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20, Resampling="legacy"), 1:10);
+            aPw  = arrayfun(@(j) estimateIRASA(X(:, j), 240, 1, 20, Prewhiten=2, Resampling="legacy"), 1:10);
             testCase.verifyGreaterThan(median(aDef), 5.5, "Default overshoot on break-free noise has changed; update the RANGE help text.");
             testCase.verifyLessThan(abs(median(aPw) - 4.5), 0.25);
         end
@@ -196,6 +199,81 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
         function testPrewhitenWithFieldTripErrors(testCase)
             testCase.verifyError(@() estimateIRASA(randn(500, 1), 100, 1, 20, Prewhiten=1, CompareFieldTrip=true), ...
                 "estimateIRASA:prewhitenFieldTrip");
+        end
+
+        function testResamplingDefaultIsIrasa(testCase)
+            rng(15);  x = noiseXu(2000, 3.0, 1.0, 240);
+            [a1, s1, p1, f1] = testCase.verifyWarningFree(@() estimateIRASA(x, 240, 1, 20));
+            [a2, s2, p2, f2] = estimateIRASA(x, 240, 1, 20, Resampling="irasa");
+            testCase.verifyEqual([a1 s1], [a2 s2]);
+            testCase.verifyTrue(isequaln(p1, p2));
+            testCase.verifyEqual(f1, f2);
+        end
+
+        function testLegacyResamplingWarns(testCase)
+            rng(17);  x = noiseXu(2000, 2.0, 1.0, 240);
+            testCase.verifyWarning(@() estimateIRASA(x, 240, 1, 20, Resampling="legacy"), "estimateIRASA:legacyResampling");
+        end
+
+        function testIrasaResamplingRemovesPeak(testCase)
+            % A 10 Hz sine on alpha-1.5 noise: the default removes the peak, "legacy" keeps it (documented).
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("estimateIRASA:legacyResampling"));
+            fs = 240;  N = 3000;  t = (0:N-1)' / fs;
+            for psd = ["pmtm", "welch"]
+                dI = zeros(1, 10);  dT = zeros(1, 10);
+                for j = 1:10
+                    rng(100 + j);  x = noiseXu(N, 1.5, 1, fs) + 0.5 * sin(2*pi*10*t + 2*pi*rand);
+                    [~, ~, pI, f] = estimateIRASA(x, fs, 1, 20, PSD=psd);
+                    [~, ~, pT] = estimateIRASA(x, fs, 1, 20, PSD=psd, Resampling="legacy");
+                    dI(j) = testEstimateIRASA.peakDb(f, pI);  dT(j) = testEstimateIRASA.peakDb(f, pT);
+                end
+                testCase.verifyLessThan(median(dI), 4, "The default left the 10 Hz peak in pFractal (" + psd + ").");
+                testCase.verifyGreaterThan(median(dT), 10, "Resampling=""legacy"" now removes peaks (" + psd + "); update the help text.");
+            end
+        end
+
+        function testIrasaResamplingAgreesOnPeakFreeNoise(testCase)
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("estimateIRASA:legacyResampling"));
+            fs = 240;  aI = zeros(1, 10);  aT = zeros(1, 10);
+            for j = 1:10
+                rng(200 + j);  x = noiseXu(3000, 2.0, 1, fs);
+                aI(j) = estimateIRASA(x, fs, 1, 20);
+                aT(j) = estimateIRASA(x, fs, 1, 20, Resampling="legacy");
+            end
+            testCase.verifyLessThan(abs(median(aI) - 2.0), 0.2);
+            testCase.verifyLessThan(abs(median(aI) - median(aT)), 0.15);
+        end
+
+        function testIrasaResamplingWithPrewhitenOnSteepBreakFree(testCase)
+            % Per-h recolouring: break-free alpha 4.5 must come back with Prewhiten=2 under "irasa", both PSDs.
+            for psd = ["pmtm", "welch"]
+                a = zeros(1, 10);
+                for j = 1:10
+                    rng(300 + j);  x = noiseXu(3000, 4.5, 1, 240, Phi=1);
+                    a(j) = estimateIRASA(x, 240, 1, 20, PSD=psd, Prewhiten=2, Resampling="irasa");
+                end
+                testCase.verifyLessThan(abs(median(a) - 4.5), 0.3, "PSD = " + psd);
+            end
+        end
+
+        function testIrasaResamplingMasksAboveValidRange(testCase)
+            rng(16);  x = noiseXu(2000, 2.0, 1, 240);
+            [~, s, p, f] = estimateIRASA(x, 240, 1, 20, Resampling="irasa");
+            testCase.verifyTrue(all(isnan(p(f * 1.9 >= 120))));
+            testCase.verifyTrue(all(isfinite(p(f >= 1 & f <= 20))));
+            testCase.verifyTrue(isfinite(s));
+        end
+
+        function testIrasaResamplingBandTooHighErrors(testCase)
+            testCase.verifyError(@() estimateIRASA(randn(2000, 1), 100, 1, 30, Resampling="irasa"), "estimateIRASA:irasaBand");
+        end
+    end
+
+    methods (Static)
+        function d = peakDb(f, p)
+            % Peak in 9.5-10.5 Hz over the median of 7-8.5 and 12-14 Hz, in dB.
+            nb = (f >= 7 & f <= 8.5) | (f >= 12 & f <= 14);
+            d = 10 * log10(max(p(f >= 9.5 & f <= 10.5)) / median(p(nb), 'omitnan'));
         end
     end
 end

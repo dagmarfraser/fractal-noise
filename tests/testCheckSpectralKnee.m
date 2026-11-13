@@ -38,6 +38,7 @@ classdef testCheckSpectralKnee < matlab.unittest.TestCase
 
             rng(5);
             x = generateCustomNoise_v004(900, 2.5, 3.0, fs);
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("estimateIRASA:legacyResampling"));   % the source script is the legacy form
             sig = x - mean(x);
 
             lorentzLog10 = @(th, f) th(1) - (th(3) / 2) .* log10(10 ^ (2 * th(2)) + f .^ 2);
@@ -70,7 +71,7 @@ classdef testCheckSpectralKnee < matlab.unittest.TestCase
             daicOld = nW * log(bestRss / nW) + 2 * 3 - aicF;
 
             result = checkSpectralKnee(x, fs, FitBandLow=fitBandLow, WideBandLow=wideFitLow, ...
-                Hset=hset, ExtraKneeStarts=fKneeXu);
+                Hset=hset, ExtraKneeStarts=fKneeXu, Resampling="legacy");
 
             testCase.verifyEqual(result.alphaStd, alphaStdOld, "AbsTol", 1e-9);
             testCase.verifyEqual(result.alphaWide, alphaW, "AbsTol", 1e-9);
@@ -88,6 +89,26 @@ classdef testCheckSpectralKnee < matlab.unittest.TestCase
             testCase.verifyTrue(ismember(result.verdict, ["strong", "marginal", "none"]));
             testCase.verifyTrue(isfinite(result.alphaStd));
             testCase.verifyTrue(isfinite(result.kneeHz));
+        end
+
+        function testDefaultRunsOnToolboxNoiseWithIrasaBand(testCase)
+            % Needs no legacy code: default call on noiseXu output, band capped for corrected IRASA.
+            rng(21);  x = noiseXu(1500, 2.0, 1.0, 100);
+            result = testCase.verifyWarningFree(@() checkSpectralKnee(x, 100));
+            testCase.verifyEqual(result.fHigh, 0.95 * 100 / (2 * 1.9), "RelTol", 1e-12);
+            testCase.verifyTrue(ismember(result.verdict, ["strong", "marginal", "none"]));
+            testCase.verifyTrue(isfinite(result.alphaStd) && isfinite(result.kneeHz));
+        end
+
+        function testBandAboveIrasaLimitErrors(testCase)
+            rng(22);  x = noiseXu(1500, 2.0, 1.0, 100);
+            testCase.verifyError(@() checkSpectralKnee(x, 100, FitBandHigh=45), "estimateIRASA:irasaBand");
+        end
+
+        function testLegacyResamplingKeepsOldBandAndWarns(testCase)
+            rng(23);  x = noiseXu(1500, 2.0, 1.0, 100);
+            result = testCase.verifyWarning(@() checkSpectralKnee(x, 100, Resampling="legacy"), "estimateIRASA:legacyResampling");
+            testCase.verifyEqual(result.fHigh, 100 / 2.2, "RelTol", 1e-12);
         end
 
         function testTooShortResidualErrors(testCase)
