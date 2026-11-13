@@ -6,26 +6,19 @@ classdef testShapeNoise < matlab.unittest.TestCase
 % it is a private local function not directly callable), all PhaseSource
 % carriers, edge cases, and error paths.
 
-    properties (Constant)
-        LegacyFunctionsDir = "/Users/d.s.fraser/Library/CloudStorage/Dropbox/Brain2Bee/PowerLawSimulationPreReg/src/functions"
-    end
-
     methods (TestClassSetup)
         function addToolboxAndLegacyPaths(testCase)
             toolboxDir = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox");
             addpath(toolboxDir);
             testCase.addTeardown(@() rmpath(toolboxDir));
-            if isfolder(testCase.LegacyFunctionsDir)
-                addpath(testCase.LegacyFunctionsDir);
-                testCase.addTeardown(@() rmpath(testCase.LegacyFunctionsDir));
-            end
+            addLegacySource(testCase);   % FRACTALNOISE_LEGACY_SRC
         end
     end
 
     methods (Test)
         function testMatchesSourceShapeXuLocalForSameSeed(testCase)
             testCase.assumeTrue(exist("generateCustomNoise_v004", "file") == 2, ...
-                "generateCustomNoise_v004 not on path; skipping source-equivalence test.");
+                "generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.");
             rng(11);
             resid = cumsum(randn(500, 1));
             resid = resid - mean(resid);

@@ -16,24 +16,13 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
 % the legacy source and self-filters via assumeTrue when that source
 % isn't on this machine's path.
 
-    properties (Constant)
-        LegacyFunctionsDir = "/Users/d.s.fraser/Library/CloudStorage/Dropbox/Brain2Bee/PowerLawSimulationPreReg/src/functions"
-        FieldTripDir = "/Users/d.s.fraser/Library/CloudStorage/Dropbox/MATLAB/fieldtrip-20251201"
-    end
-
     methods (TestClassSetup)
         function addToolboxAndLegacyPaths(testCase)
             toolboxDir = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox");
             addpath(toolboxDir);
             testCase.addTeardown(@() rmpath(toolboxDir));
-            if isfolder(testCase.LegacyFunctionsDir)
-                addpath(testCase.LegacyFunctionsDir);
-                testCase.addTeardown(@() rmpath(testCase.LegacyFunctionsDir));
-            end
-            if isempty(which("ft_defaults")) && isfolder(testCase.FieldTripDir)
-                addpath(testCase.FieldTripDir);
-                evalc("ft_defaults");
-            end
+            addLegacySource(testCase);   % FRACTALNOISE_LEGACY_SRC
+            addFieldTrip(testCase);      % FRACTALNOISE_FIELDTRIP
         end
     end
 
@@ -48,7 +37,7 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
             % session, 2026-07-15.
             testCase.assumeTrue(exist("generateCustomNoise_v004", "file") == 2 ...
                 && exist("iraAlphaSigma_v003", "file") == 2, ...
-                "Legacy source functions not on path; skipping source-equivalence test.");
+                "Legacy source functions not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.");
             rng(23);
             x = generateCustomNoise_v004(3000, 3.5, 5.0, 120);
             fLow = 1.0; fHigh = 30.0; fs = 120;
