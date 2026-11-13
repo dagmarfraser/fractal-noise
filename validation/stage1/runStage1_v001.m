@@ -22,6 +22,12 @@ arguments
     opts.Cores (1,1) double = 10
     opts.Languages (1,:) string = ["matlab" "python" "R"]
 end
+% fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
+% which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
+% peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
+fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
+warnState = warning("off", "estimateIRASA:legacyResampling");
+cleanupWarn = onCleanup(@() warning(warnState));
 here = fileparts(mfilename("fullpath"));
 addpath(fullfile(here, "..", "exactReference"));
 if isempty(which('ft_defaults')); addpath(opts.FieldTripDir); ft_defaults; end
@@ -85,8 +91,8 @@ end
 function T = matlabArm(x, fs, b, cid, r)
 rows = cell(3, 8);
 try
-    t0 = tic;  aHB = estimateIRASA(x, fs, b(1), b(2));  tHB = toc(t0);
-    t0 = tic;  [~, ~, ~, ~, ftI, pmI] = estimateIRASA(x, fs, b(1), b(2), CompareFieldTrip=true, ComparePMTM=true);  tAll = toc(t0);
+    t0 = tic;  aHB = estimateIRASA(x, fs, b(1), b(2), Resampling="legacy");  tHB = toc(t0);
+    t0 = tic;  [~, ~, ~, ~, ftI, pmI] = estimateIRASA(x, fs, b(1), b(2), CompareFieldTrip=true, ComparePMTM=true, Resampling="legacy");  tAll = toc(t0);
     rows(1, :) = {cid, r, "matlab_HB_irasa", "matlab", aHB, tHB, st(aHB, ""), NaN};
     rows(2, :) = {cid, r, "fieldtrip_irasa", "matlab", ftI.alphaFT, max(tAll - tHB, 0), st(ftI.alphaFT, ftI.message), NaN};
     rows(3, :) = {cid, r, "matlab_PM_pmtm", "matlab", pmI.alphaPM, NaN, st(pmI.alphaPM, pmI.message), NaN};

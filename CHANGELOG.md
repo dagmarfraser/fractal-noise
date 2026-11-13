@@ -8,7 +8,113 @@ session history, which is not this toolbox's situation. Each function's
 docstring states which specific internal vintage it was extracted from, so
 that history is not lost, just relocated to prose rather than the filename.
 
-## v1.2.0 -- unreleased (branch joss-v2)
+## v2.0.0 -- unreleased (branch v2.0.0)
+
+### Breaking: `estimateIRASA` now performs IRASA
+
+**Bug.** Up to v1.2.0 the resampled copies were labelled with their true
+rates (`fs*h`, `fs/h`) and interpolated back onto the original Hz axis.
+Every copy then estimated the same spectrum at the same frequencies, so
+an oscillatory peak never moved and the median over `Hset` removed
+nothing. The result was a `pmtm` (or Welch) slope fit. On a 10 Hz sine
+over alpha-1.5 noise the peak stood 14.7 dB above its neighbours in
+`pFractal`, against 14.9 dB in the raw spectrum
+(`review/checkIRASAPeakRemoval_v001.m`, R2025b). The noise-only tests
+could not see it, because on peak-free noise the exponent is unaffected.
+
+**Fix.** The default, `Resampling="irasa"`, is the Wen & Liu (2016)
+method: resampled copies are analysed at the nominal rate `fs`, peaks
+move to `f0*h` and `f0/h`, and the median rejects them (same signal:
+1.5 dB with `pmtm`, 1.4 dB with Welch).
+
+**What changes for callers**
+
+- Exponents on signals with peaks differ from 1.x, and are now correct.
+  On peak-free signals they agree with 1.x.
+- The band must satisfy `fHigh*max(Hset) < fs/2`; otherwise the call
+  errors (`estimateIRASA:irasaBand`).
+- `pFractal` is NaN from `fs/(2*max(Hset))` upward, so `sigmaEst` covers
+  a narrower range and is smaller.
+- With `Prewhiten=k`, each `h` column is recoloured by its own gain
+  before the median.
+- `Resampling="legacy"` reproduces 1.x bit for bit and warns on every
+  call (`estimateIRASA:legacyResampling`). It is not IRASA.
+
+### Breaking: `shapeNoise` swaps on the differenced series by default
+
+**Problem.** `shapeNoise` copied `abs(fft(resid))` onto the carrier's
+phase. For a steep series whose ends do not meet, that magnitude is
+mostly end-mismatch leakage (f^-2) above the lowest bins. The surrogate
+stayed steep only when the carrier's own end jump supplied matching
+phases. With the `"xu"` carrier, 3 to 25% of surrogates between alpha 3
+and 6 came out more than 0.5 shallower than `resid` (22% at alpha 3.5,
+fs 133, N 3000; `validation/checkShapeNoisePrewhiten_v001.m`). At
+alpha 4, carriers in the bottom third for end mismatch gave 58% shallow
+surrogates and the rest 1% or none
+(`validation/checkShapeNoiseMechanism_v001.m`). Medians were unaffected,
+which is why mean-based checks did not show it.
+
+**Fix.** New option `Prewhiten`, `"auto"` (default) or 0..3: difference
+`resid` and the carrier k times, swap there, integrate k times, centre
+on `mean(resid)` and rescale to `std(resid)`. `"auto"` uses
+k = min(3, floor((alpha + 1)/2)). Share more than 0.5 shallow: 0% in
+every cell at N 3000, at most 2% at N 1000.
+
+**What changes for callers**
+
+- Output differs from 1.x for alpha of 1 and above; identical below.
+- With `Prewhiten` above 0, `abs(fft(n))` no longer equals
+  `abs(fft(resid))`; the k-th differences match instead.
+- `Prewhiten=0` reproduces 1.x, and the source `shapeXu_local`, bit for
+  bit.
+
+### `checkSpectralKnee`
+
+- New `Resampling` option, passed through to `estimateIRASA`; default
+  `"irasa"`.
+- The automatic upper band edge is now `0.95*fs/(2*max(Hset))`
+  (previously `fs/2.2`, kept only under `"legacy"`).
+
+### Tests
+
+New: default is `"irasa"`; `"legacy"` warns; peak removed under the
+default and kept under `"legacy"` (both PSDs); agreement on peak-free
+noise; steep break-free noise with `Prewhiten`; the NaN mask; the band
+error; three `checkSpectralKnee` tests for the new option; five
+`shapeNoise` tests (legacy identity at `Prewhiten=0`, tail removed at
+alpha 4, std and mean kept, `"auto"` equals 0 below alpha 1, error paths). Tests that pin
+1.x numbers call `"legacy"` explicitly.
+
+### Documentation
+
+`doc/WhyHomebrewIRASA` rewritten: its earlier argument rested on three
+estimators agreeing, two of which were the same computation, so the
+"verified alpha -2 to 6" claim is withdrawn. `doc/GettingStarted` updated
+(links point to the shipped .m pages; gains `estimateWhittleAlpha`).
+README rewritten to lead with what the toolbox is for, with an
+"Upgrading from 1.x" section. `examples/CompareFftnoiseVsShapedXu` gains
+reference and Whittle columns and now prints line breaks.
+
+### Test infrastructure
+
+- Source-equivalence tests take the research source from the environment
+  variable `FRACTALNOISE_LEGACY_SRC` (FieldTrip from
+  `FRACTALNOISE_FIELDTRIP`) instead of a hard-coded personal path. Set but
+  missing is a fatal error; unset is logged and the filter message names
+  the variable; `FRACTALNOISE_REQUIRE_LEGACY=1` makes an unset source fatal.
+- Validation scripts pin `estimateIRASA` to `Resampling="legacy"`, the
+  method their recorded results came from.
+- `functionSignatures.json` passes `validateFunctionSignaturesJSON` (10
+  messages fixed).
+
+### Project and JOSS housekeeping
+
+- `CONTRIBUTING.md`, a support section in the README, `CITATION.cff` and
+  `.zenodo.json` (with ORCID); Zenodo archives each GitHub release.
+- Continuous integration: GitHub Actions runs the full suite on MATLAB
+  R2025b with the Signal Processing Toolbox.
+
+## v1.2.0 -- 2026-11-09
 
 ### New: `estimateWhittleAlpha`
 

@@ -18,6 +18,12 @@ arguments
     opts.FieldTripDir (1,1) string = fullfile(getenv("HOME"), "Library/CloudStorage/Dropbox/MATLAB/fieldtrip-20251201")
     opts.Cores (1,1) double = 10
 end
+% fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
+% which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
+% peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
+fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
+warnState = warning("off", "estimateIRASA:legacyResampling");
+cleanupWarn = onCleanup(@() warning(warnState));
 here = fileparts(mfilename("fullpath"));
 addpath(fullfile(here, "..", "exactReference"));
 if isempty(which('ft_defaults')); addpath(opts.FieldTripDir); ft_defaults; end
@@ -45,8 +51,8 @@ rows = {};
 for c = 1:nC
     for r = 1:opts.NRep
         x = Xs{c}(:, r);
-        t0 = tic;  aHB = estimateIRASA(x, opts.Fs, opts.Band(1), opts.Band(2));  tHB = toc(t0);
-        t0 = tic;  [~, ~, ~, ~, ftI, pmI] = estimateIRASA(x, opts.Fs, opts.Band(1), opts.Band(2), CompareFieldTrip=true, ComparePMTM=true);  tAll = toc(t0);
+        t0 = tic;  aHB = estimateIRASA(x, opts.Fs, opts.Band(1), opts.Band(2), Resampling="legacy");  tHB = toc(t0);
+        t0 = tic;  [~, ~, ~, ~, ftI, pmI] = estimateIRASA(x, opts.Fs, opts.Band(1), opts.Band(2), CompareFieldTrip=true, ComparePMTM=true, Resampling="legacy");  tAll = toc(t0);
         rows(end+1, :) = {M.cell_id(c), r, "matlab_HB_irasa", "matlab", aHB, tHB, st(aHB, "")}; %#ok<AGROW>
         rows(end+1, :) = {M.cell_id(c), r, "fieldtrip_irasa", "matlab", ftI.alphaFT, max(tAll - tHB, 0), st(ftI.alphaFT, ftI.message)}; %#ok<AGROW>
         rows(end+1, :) = {M.cell_id(c), r, "matlab_PM_pmtm", "matlab", pmI.alphaPM, NaN, st(pmI.alphaPM, pmI.message)}; %#ok<AGROW>
