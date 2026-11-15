@@ -60,7 +60,7 @@ for ai = 1:numel(targetAlphas)
     end
 end
 %[text] ## Result
-%[text] Means over the repetitions. The first column is the reference series itself, read by W. Judge each surrogate against that column, not against the nominal target. Up to about alpha=3 both surrogates follow the reference. Above it the `fftnoise` surrogate stops following and stays between 2 and 3 on all four estimators. The end-matched surrogate follows the reference on W at every target (its own target is its segment's exponent, which can differ from the whole reference's by a little). HB, FT and PM are whole-record spectral fits and scatter by several tenths once alpha passes 3, so read W there.
+%[text] Means over the repetitions. The first column is the reference series itself, read by W. Judge each surrogate against that column, not against the nominal target. Up to about alpha=3 both surrogates follow the reference. Above it the `fftnoise` surrogate stops following and stays between 2 and 3 on all four estimators. The end-matched surrogate follows the reference on W at every target (its own target is its segment's exponent, which can differ from the whole reference's by a little). HB, FT and PM are whole-record spectral fits; on the end-matched surrogate they also stay close (on the M5, R2026a, within 0.2 at alpha 5), because its ends meet, but on other whole records they can scatter by several tenths once alpha passes 3, so read W there.
 fprintf("%-6s | %-6s | %-33s | %-33s | %s\n", "target", "ref W", "fftnoise (HB / FT / PM / W)", "end-matched (HB / FT / PM / W)", "L/N");
 fprintf("%s\n", repmat('-', 1, 94));
 mu = @(A, ai) mean(A(ai, :), 'omitnan');
