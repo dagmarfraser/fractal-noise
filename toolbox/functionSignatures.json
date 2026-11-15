@@ -21,15 +21,21 @@
     {
         "inputs":
         [
-            {"name":"resid", "kind":"required", "type":["numeric", "column"]},
+            {"name":"resid", "kind":"required", "type":["numeric", "2d"]},
             {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
-            {"name":"alpha", "kind":"required", "type":["numeric", "scalar"]},
-            {"name":"PhaseSource", "kind":"namevalue", "type":[["choices={'xu','white','pinknoise','dsp'}"], "function_handle"]},
-            {"name":"Prewhiten", "kind":"namevalue", "type":[["choices={'auto'}"], ["numeric", "integer", "scalar", ">=0", "<=3"]]}
+            {"name":"alpha", "kind":"ordered", "type":["numeric", "row"]},
+            {"name":"Method", "kind":"namevalue", "type":["choices={'endMatched','legacy'}"]},
+            {"name":"AlphaTol", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
+            {"name":"MaxDraw", "kind":"namevalue", "type":["numeric", "integer", "positive", "scalar"]},
+            {"name":"FairShareTol", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
+            {"name":"MinLength", "kind":"namevalue", "type":["numeric", "integer", "scalar", ">=5"]},
+            {"name":"AlphaBand", "kind":"namevalue", "type":["numeric", "numel=2"]},
+            {"name":"PhaseSource", "kind":"namevalue", "type":[["choices={'xu','white','pinknoise','dsp'}"], "function_handle"]}
         ],
         "outputs":
         [
-            {"name":"n", "type":["double", "column"]}
+            {"name":"n", "type":["double", "2d"]},
+            {"name":"info", "type":["struct", "scalar"]}
         ]
     },
 

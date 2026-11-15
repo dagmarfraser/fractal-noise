@@ -43,8 +43,8 @@ classdef testToolboxSelfContained < matlab.unittest.TestCase
             testCase.verifyTrue(isfinite(s));
             testCase.verifyEqual(numel(p), numel(f));
 
-            n = shapeNoise(x, 100, 2.0);
-            testCase.verifyEqual(numel(n), numel(x));
+            [n, info] = shapeNoise(x, 100, []);
+            testCase.verifyEqual(size(n), [info.L, 1]);
 
             result = checkSpectralKnee(x, 100);
             testCase.verifyTrue(ismember(result.verdict, ["strong", "marginal", "none"]));

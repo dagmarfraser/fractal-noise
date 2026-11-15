@@ -1,165 +1,248 @@
-function n = shapeNoise(resid, fs, alpha, options)
-%SHAPENOISE Impose an empirical amplitude spectrum onto a chosen phase carrier.
+function [n, info] = shapeNoise(resid, fs, alpha, options)
+%SHAPENOISE Surrogate noise with the amplitude spectrum of a measured residual.
 %
-% Toolbox generalisation of shapeXu_local, a private local function inside
-% PowerLawSimulationPreReg's generateLoopClosureNoise_v003.m (~line 129).
-% The magnitude-imposition / sigma-restoration / conjugate-symmetry logic
-% is unchanged and source-agnostic. What changes is the phase carrier: the
-% original hardcoded generateCustomNoise_v004 (Xu-only); this version
-% exposes PhaseSource so the carrier composes with dsp.colorednoise,
-% MATLAB's built-in pinknoise, plain white noise, or any custom generator,
-% not just Xu.
+%   [n, info] = shapeNoise(resid, fs, alpha) returns an end-matched
+%   random-phase surrogate of resid (the default since v2.0.0):
+%     1. Segment: the longest length L at which every channel of resid has
+%        a sub-segment whose wrap-around step and wrapped second differences
+%        are no larger than the segment's own mean terms (the "fairShare"
+%        rule, Tol = 1; segment measures from Schreiber & Schmitz 2000,
+%        Physica D 142, Eqs. 16-17; longest-first search after the stepwise
+%        stopping of Nakamura, Small & Hirata 2006, Phys Rev E 74, 026205).
+%        Each channel takes its own best segment of that common length.
+%     2. Surrogate: |FFT(segment)| on uniformly random phases, mean removed,
+%        scaled to std(segment).
+%     3. Alpha selection: a draw is accepted when the estimateWhittleAlpha
+%        exponent of the surrogate is within AlphaTol of the target; up to
+%        MaxDraw draws per channel.
+%   The surrogate has length L, not numel(resid): a Fourier surrogate of a
+%   steep series whose ends do not meet carries the end jump as broadband
+%   leakage (Schreiber & Schmitz 2000), so the whole record cannot be
+%   matched. Whatever you add the noise to must have length L too.
+%   The fairShare tolerance bounds the extra derivative energy from the wrap
+%   at 1/(L-1) of the first-difference energy and 2/(L-2) of the second.
 %
-% CONSTRUCTION with Prewhiten = 0 (unchanged from source):
-%   F_shaped = |FFT(resid)| .* exp(1i*angle(FFT(carrier)))
-%   n        = real(ifft(F_shaped)), rescaled so std(n) == std(resid)
-% CONSTRUCTION with Prewhiten = k > 0 (new in v2.0.0):
-%   the same swap applied to diff(resid, k) and diff(carrier, k), then
-%   integrated k times (cumsum), centred on mean(resid) and rescaled so
-%   std(n) == std(resid).
-% Conjugate symmetry is automatic: |FFT(resid)| is symmetric and
-% angle(FFT(carrier)) is antisymmetric for a real carrier, so F_shaped is
-% a valid real-signal spectrum. real() guards residual numerical asymmetry.
+%   Validated on real template-subtracted movement residuals (Fraser,
+%   Hickman, Cook; PowerLawSimulationPreReg runner v024): filtered velocity
+%   and acceleration noise 1.00-1.02 of the residual's (median), with alpha
+%   held by the selection step. The 1.x construction failed that check
+%   (3-25% of surrogates more than 0.5 too shallow at alpha 3-6; see
+%   validation/checkShapeNoiseEndMatched_v001.m and
+%   validation/checkShapeNoiseMechanism_v001.m).
+%
+%   TEMPLATE-SUBTRACTED DATA: pass only the part of the residual the
+%   template actually covered. A stretch left at exactly zero (an uncovered
+%   template tail) is an error here, because the segment search would
+%   otherwise take it and feed a step into the surrogate.
 %
 % SYNTAX:
-%   n = shapeNoise(resid, fs, alpha)
-%   n = shapeNoise(resid, fs, alpha, PhaseSource="xu")
-%   n = shapeNoise(resid, fs, alpha, PhaseSource="white")
-%   n = shapeNoise(resid, fs, alpha, PhaseSource="pinknoise")
-%   n = shapeNoise(resid, fs, alpha, PhaseSource="dsp")
-%   n = shapeNoise(resid, fs, alpha, PhaseSource=@myCarrierFcn)
-%   n = shapeNoise(___, Prewhiten=k)             % k = "auto" or 0..3
+%   [n, info] = shapeNoise(resid, fs, [])          % target alpha = segment's own (recommended)
+%   [n, info] = shapeNoise(resid, fs, alpha)       % explicit target, scalar or 1-by-C
+%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, FairShareTol=1, MinLength=32, AlphaBand=[1 20])
+%   n = shapeNoise(resid, fs, alpha, Method="legacy")                      % 1.x construction; warns
+%   n = shapeNoise(resid, fs, alpha, Method="legacy", PhaseSource="white") % legacy carriers
 %
 % INPUTS:
-%   resid - Empirical residual time series, real column vector. Its
-%           amplitude spectrum (magnitude only) is what gets imposed.
-%   fs    - Sampling rate in Hz, passed through to the phase carrier.
-%   alpha - Target spectral exponent for the phase carrier. Required by
-%           PhaseSource "xu" and "dsp"; ignored (with a warning if it
-%           looks like the caller expected it to matter) by "white" and
-%           "pinknoise", both of which are fixed-colour carriers.
-%   PhaseSource - Name-value. One of:
-%       "xu"        (default) noiseXu(M, alpha, sig, fs) -- genuine
-%                   fractional-phase carrier, matches source behaviour
-%                   exactly when left at default.
-%       "white"     Plain randn(M,1)*sig. Random phase; equivalent
-%                   carrier to the project's separate 'fftnoise' model,
-%                   offered here for composability/comparison.
-%       "pinknoise" MATLAB's built-in pinknoise function (Signal
-%                   Processing Toolbox). Fixed alpha~1 carrier; alpha
-%                   input is not used to shape it.
-%       "dsp"       dsp.ColoredNoise (DSP System Toolbox), using its
-%                   InverseFrequencyPower property (continuous, range
-%                   [-2, 2]). Requested alpha outside that range is
-%                   clamped to the nearest bound, with a warning.
-%       function handle @(M, fs, alpha) -> real Mx1 vector. Most general
-%                   option; must return a real column vector of length M.
-%   Prewhiten - Name-value, "auto" or an integer 0..3. Default "auto".
-%       Number of times resid and the carrier are differenced before the
-%       magnitude/phase swap. "auto" uses k = min(3, floor((alpha + 1)/2))
-%       (0 below alpha = 1), so alpha must then be a rough exponent of
-%       resid whatever the carrier.
-%       WHY: abs(fft(resid)) of a steep series whose ends do not meet is,
-%       above the lowest bins, mostly end-mismatch leakage (f^-2). With
-%       Prewhiten = 0 the surrogate inherits that magnitude and stays
-%       steep only when the carrier's own end jump supplies matching
-%       phases. Measured (fs 133, N 3000, 1-20 Hz, 100 seeds, "xu"
-%       carrier): 21, 23, 13 and 10 percent of surrogates at alpha 3.5,
-%       4, 4.5 and 5 came out more than 0.5 shallower than resid; with
-%       "auto", none did. With Prewhiten = k > 0 the surrogate's
-%       k-th difference has the magnitude spectrum of resid's k-th
-%       difference; abs(fft(n)) itself no longer equals abs(fft(resid)).
-%       Prewhiten = 0 is the construction of v1.2.0 and earlier, and of
-%       the source shapeXu_local, bit for bit.
+%   resid - Residual, real N-by-C matrix (one column per channel, e.g. the
+%           two axes of a movement) or a vector. "legacy" takes a vector.
+%   fs    - Sampling rate in Hz.
+%   alpha - Target exponent for alpha selection: [] (default use: each
+%           channel's segment alpha by estimateWhittleAlpha over AlphaBand),
+%           a scalar, or 1-by-C. Under "legacy" the carrier's alpha.
+%   Method       - "endMatched" (default) or "legacy".
+%   AlphaTol     - Accept a draw when |alpha(draw) - target| <= AlphaTol (0.3).
+%   MaxDraw      - Draws per channel before giving up (20). A channel with
+%                  no accepted draw is returned as NaN, with a warning
+%                  ("shapeNoise:noAcceptedDraw") and info.accepted false.
+%   FairShareTol - The fairShare tolerance (1).
+%   MinLength    - Shortest segment searched (32 samples). No segment at
+%                  or above it is an error ("shapeNoise:noSegment").
+%   AlphaBand    - Band in Hz for estimateWhittleAlpha
+%                  ([1, min(20, fs/2 - 1)]).
+%   PhaseSource  - "legacy" only: "xu" (default), "white", "pinknoise",
+%                  "dsp" or a function handle @(M, fs, alpha).
 %
-% OUTPUT:
-%   n - Real surrogate column vector, length numel(resid), with
-%       std(n) numerically equal to std(resid).
+% OUTPUTS:
+%   n    - L-by-C surrogate ("endMatched"), or numel(resid)-by-1 ("legacy").
+%   info - "endMatched": i0, i1 (1-by-C segment start and end in resid), L,
+%          Lfrac (L/N), cJump, cSlip (wrap terms over mean terms, <= Tol),
+%          alphaTarget, nDraw, accepted, dAlpha, nEstFail (draws whose alpha
+%          estimate errored, counted as rejected and warned about as
+%          "shapeNoise:estimateFailed"; 1-by-C). "legacy": Method only.
 %
-% NOTES:
-%   - "dsp" and "pinknoise" are optional-toolbox paths. noiseXu ("xu",
-%     the default) and "white" require no toolbox beyond base MATLAB and
-%     are the guaranteed-available fallback.
-%   - Whether a given carrier's phase actually survives the magnitude
-%     swap to still deliver the intended alpha is an empirical question
-%     (see PowerLawSimulationPreReg Finding #67 and the
-%     alpha-preservation checks referenced there). This function performs
-%     the construction; it does not itself validate alpha preservation.
-%     For the "xu" carrier see Prewhiten above, and
-%     validation/checkShapeNoiseMechanism_v001.m.
+% LEGACY ("legacy", the 1.x behaviour, bit for bit):
+%   F = |FFT(resid)| .* exp(1i*angle(FFT(carrier))), n = real(ifft(F))
+%   rescaled to std(resid). The carrier's phases decide whether the
+%   surrogate stays steep; at alpha 3-6 a tail of surrogates comes out
+%   shallow. Kept only to reproduce earlier results; warns on every call
+%   ("shapeNoise:legacyConstruction").
 %
-% See also: noiseXu, estimateIRASA
+% See also: estimateWhittleAlpha, noiseXu, estimateIRASA
 %
 % Toolbox: fractalnoise
-% Extracted from: src/functions/generateLoopClosureNoise_v003.m (shapeXu_local)
-% (PowerLawSimulationPreReg, session 52)
+% Extracted from: PowerLawSimulationPreReg src/endToEndSegment_v004.m
+% (commonLength mode) and src/functions/endMatchedNoise_v001.m, with
+% alphaPWLW_v001 replaced by its toolbox copy estimateWhittleAlpha; legacy
+% path from src/functions/generateLoopClosureNoise_v003.m (shapeXu_local).
 
 arguments
-    resid (:, 1) double
+    resid double {mustBeReal}
     fs (1, 1) double {mustBePositive}
-    alpha (1, 1) double
-    options.PhaseSource = "xu"
-    options.Prewhiten = "auto"
+    alpha double = []
+    options.Method (1, 1) string {mustBeMember(options.Method, ["endMatched", "legacy"])} = "endMatched"
+    options.AlphaTol (1, 1) double {mustBePositive} = 0.3
+    options.MaxDraw (1, 1) double {mustBeInteger, mustBePositive} = 20
+    options.FairShareTol (1, 1) double {mustBePositive} = 1
+    options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 32
+    options.AlphaBand (1, 2) double = [NaN NaN]
+    options.PhaseSource = ""
 end
 
-resid = resid(:);
+if options.Method == "legacy"
+    warning("shapeNoise:legacyConstruction", ...
+        "Method=""legacy"" is the 1.x construction: at alpha 3-6 a tail of surrogates comes out more than 0.5 " + ...
+        "too shallow. It is kept only to reproduce earlier results.");
+    if ~isvector(resid) || isempty(resid)
+        error("shapeNoise:legacyVector", "Method=""legacy"" takes a non-empty vector residual.");
+    end
+    if ~isscalar(alpha), error("shapeNoise:legacyAlpha", "Method=""legacy"" needs a scalar carrier alpha."); end
+    ps = options.PhaseSource;
+    if (isstring(ps) || ischar(ps)) && string(ps) == "", ps = "xu"; end
+    n = legacyShape(resid(:), fs, alpha, ps);
+    info = struct("Method", "legacy");
+    return
+end
+
+if ~(isstring(options.PhaseSource) || ischar(options.PhaseSource)) || string(options.PhaseSource) ~= ""
+    error("shapeNoise:phaseSourceLegacyOnly", ...
+        "PhaseSource applies only to Method=""legacy""; the end-matched surrogate uses uniformly random phases.");
+end
+if isvector(resid), resid = resid(:); end
+[N, C] = size(resid);
+if any(~isfinite(resid), "all"), error("shapeNoise:nonFinite", "resid contains NaN or Inf."); end
+band = options.AlphaBand;
+if any(isnan(band)), band = [1, min(20, fs/2 - 1)]; end
+checkZeroTail(resid);
+if any(std(resid, 0, 1) == 0), error("shapeNoise:constant", "a channel of resid is constant."); end
+
+[i0, i1, seg] = fairShareSegments(resid, options.FairShareTol, options.MinLength);
+L = seg.L;
+if isempty(alpha)
+    target = NaN(1, C);
+    for ch = 1:C
+        target(ch) = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2));
+    end
+elseif isscalar(alpha)
+    target = repmat(alpha, 1, C);
+elseif numel(alpha) == C
+    target = alpha(:)';
+else
+    error("shapeNoise:alphaSize", "alpha must be [], a scalar, or one value per channel (%d).", C);
+end
+if any(~isfinite(target)), error("shapeNoise:alphaNotFinite", "target alpha is not finite."); end
+
+n = NaN(L, C);  nDraw = zeros(1, C);  accepted = false(1, C);  dAlpha = NaN(1, C);  nEstFail = zeros(1, C);  estMsg = "";
+for ch = 1:C
+    [n(:, ch), nDraw(ch), accepted(ch), dAlpha(ch), nEstFail(ch), m] = drawEndMatched(resid(i0(ch):i1(ch), ch), ...
+        target(ch), fs, band, options.AlphaTol, options.MaxDraw);
+    if m ~= "", estMsg = m; end
+end
+if ~all(accepted)
+    warning("shapeNoise:noAcceptedDraw", ...
+        "No draw within AlphaTol %.2f of the target in %d tries for channel(s) %s; returned as NaN.", ...
+        options.AlphaTol, options.MaxDraw, mat2str(find(~accepted)));
+end
+info = struct("Method", "endMatched", "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, "cJump", seg.cJump, ...
+    "cSlip", seg.cSlip, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail);
+if any(nEstFail > 0)
+    warning("shapeNoise:estimateFailed", ...
+        "estimateWhittleAlpha failed on %d draw(s) (counted as rejected; info.nEstFail). Last message: %s", ...
+        sum(nEstFail), estMsg);
+end
+end
+
+function checkZeroTail(S)
+% An exact-zero run at either end is an uncovered template stretch, not noise.
+for ch = 1:size(S, 2)
+    x = S(:, ch);
+    nz = find(x ~= 0);
+    if isempty(nz), continue, end
+    lead = nz(1) - 1;  trail = numel(x) - nz(end);
+    if lead >= 3 || trail >= 3
+        error("shapeNoise:zeroTail", ...
+            "channel %d has %d leading and %d trailing samples of exactly zero (an uncovered template stretch?). " + ...
+            "Pass only the covered residual.", ch, lead, trail);
+    end
+end
+end
+
+function [i0, i1, info] = fairShareSegments(S, tol, minLength)
+% endToEndSegment_v004, Mode "commonLength".
+[N, C] = size(S);
+if N < minLength
+    error("shapeNoise:short", "resid has %d samples, fewer than MinLength %d.", N, minLength);
+end
+e1 = [zeros(1, C); cumsum(diff(S).^2)];  e2 = [zeros(1, C); cumsum(diff(S, 2).^2)];
+i0 = NaN(1, C);  i1 = NaN(1, C);
+for L = N:-1:minLength
+    a = (1:N - L + 1)';  b = a + L - 1;
+    m1 = (e1(b, :) - e1(a, :)) / (L - 1);  m2 = (e2(b - 1, :) - e2(a, :)) / (L - 2);
+    cj = (S(a, :) - S(b, :)).^2 ./ m1;
+    cs = ((S(a + 1, :) - 2 * S(a, :) + S(b, :)).^2 + (S(a, :) - 2 * S(b, :) + S(b - 1, :)).^2) / 2 ./ m2;
+    c = max(cj, cs);  c(~isfinite(c)) = Inf;
+    [cMin, k] = min(c, [], 1);
+    if all(cMin <= tol), i0 = a(k)';  i1 = b(k)';  break, end
+end
+if any(isnan(i0))
+    error("shapeNoise:noSegment", "no length of %d or more samples has a segment within FairShareTol %g in all %d channels.", ...
+        minLength, tol, C);
+end
+info.L = i1(1) - i0(1) + 1;  info.cJump = NaN(1, C);  info.cSlip = NaN(1, C);
+for ch = 1:C
+    G = S(i0(ch):i1(ch), ch);
+    info.cJump(ch) = (G(1) - G(end))^2 / mean(diff(G).^2);
+    info.cSlip(ch) = ((G(2) - 2 * G(1) + G(end))^2 + (G(1) - 2 * G(end) + G(end - 1))^2) / 2 / mean(diff(G, 2).^2);
+end
+end
+
+function [u, k, ok, dA, nFail, msg] = drawEndMatched(ref, aRef, fs, band, tol, maxDraw)
+% endMatchedNoise_v001 drawAxis, with estimateWhittleAlpha for alphaPWLW_v001.
+L = numel(ref);  A = abs(fft(ref - mean(ref)));  h = floor((L - 1) / 2);  sR = std(ref);  ok = false;  dA = NaN;  nFail = 0;  msg = "";
+for k = 1:maxDraw
+    Z = zeros(L, 1);  Z(2:h + 1) = A(2:h + 1) .* exp(2i * pi * rand(h, 1));  Z(L:-1:L - h + 1) = conj(Z(2:h + 1));
+    if mod(L, 2) == 0, Z(L/2 + 1) = A(L/2 + 1) * sign(randn); end
+    u = real(ifft(Z));  u = u - mean(u);  u = u / std(u) * sR;
+    d = NaN;
+    try
+        d = estimateWhittleAlpha(u, fs, band(1), band(2)) - aRef;
+    catch err
+        nFail = nFail + 1;  msg = string(err.message);   % rejected draw, reported by the caller
+    end
+    if abs(d) <= tol, ok = true;  dA = d;  return, end
+end
+u = NaN(L, 1);
+end
+
+function n = legacyShape(resid, fs, alpha, phaseSource)
+% 1.x construction (shapeXu_local), unchanged.
 M = numel(resid);
 sig = std(resid, 0, 1);
-
 if sig == 0
     n = zeros(M, 1);
     return
 end
-
-k = prewhitenOrder(options.Prewhiten, alpha, M);   % validated before any random numbers are drawn
-carrier = shapeNoiseCarrier(options.PhaseSource, M, fs, alpha, sig);
-
+carrier = shapeNoiseCarrier(phaseSource, M, fs, alpha, sig);
 if ~isreal(carrier) || ~iscolumn(carrier) || numel(carrier) ~= M
     error("shapeNoise:InvalidCarrier", ...
         "Phase carrier must return a real column vector of length %d.", M);
 end
-
-if k == 0
-    empiricalMagnitude = abs(fft(resid));
-    carrierSpectrum = fft(carrier);
-    shapedSpectrum = empiricalMagnitude .* exp(1i * angle(carrierSpectrum));
-    n = real(ifft(shapedSpectrum));
-
-    carrierStd = std(n, 0, 1);
-    if carrierStd > 0
-        n = n * (sig / carrierStd);
-    end
-else
-    n = real(ifft(abs(fft(diff(resid, k))) .* exp(1i * angle(fft(diff(carrier, k))))));
-    for q = 1:k
-        n = cumsum([0; n]);
-    end
-    shapedStd = std(n, 0, 1);
-    if shapedStd == 0 || ~isfinite(shapedStd)
-        error("shapeNoise:PrewhitenDegenerate", ...
-            "Prewhiten=%d gave a surrogate with std %g. Use a smaller Prewhiten.", k, shapedStd);
-    end
-    n = (n - mean(n)) * (sig / shapedStd) + mean(resid);
-end
-
-end
-
-function k = prewhitenOrder(prewhiten, alpha, M)
-%PREWHITENORDER Resolve the Prewhiten option to an integer differencing order.
-if (isstring(prewhiten) || ischar(prewhiten)) && isscalar(string(prewhiten)) && lower(string(prewhiten)) == "auto"
-    if ~isfinite(alpha)
-        error("shapeNoise:PrewhitenAutoNeedsAlpha", ...
-            "Prewhiten=""auto"" needs a finite alpha; got %g. Pass Prewhiten=k explicitly.", alpha);
-    end
-    k = min(3, max(0, floor((alpha + 1) / 2)));
-elseif isnumeric(prewhiten) && isscalar(prewhiten) && ismember(prewhiten, 0:3)
-    k = double(prewhiten);
-else
-    error("shapeNoise:InvalidPrewhiten", "Prewhiten must be ""auto"" or an integer 0..3.");
-end
-if k > 0 && M - k < 8
-    error("shapeNoise:TooShortForPrewhiten", ...
-        "resid has %d samples; Prewhiten=%d needs at least %d.", M, k, k + 8);
+empiricalMagnitude = abs(fft(resid));
+carrierSpectrum = fft(carrier);
+shapedSpectrum = empiricalMagnitude .* exp(1i * angle(carrierSpectrum));
+n = real(ifft(shapedSpectrum));
+carrierStd = std(n, 0, 1);
+if carrierStd > 0
+    n = n * (sig / carrierStd);
 end
 end
 
