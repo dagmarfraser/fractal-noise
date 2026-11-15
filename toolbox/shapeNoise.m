@@ -26,9 +26,17 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   Hickman, Cook; PowerLawSimulationPreReg runner v024): filtered velocity
 %   and acceleration noise 1.00-1.02 of the residual's (median), with alpha
 %   held by the selection step. The 1.x construction failed that check
-%   (3-25% of surrogates more than 0.5 too shallow at alpha 3-6; see
+%   (1-27% of surrogates more than 0.5 too shallow at alpha 3-6; see
 %   validation/checkShapeNoiseEndMatched_v001.m and
 %   validation/checkShapeNoiseMechanism_v001.m).
+%
+%   RANGE: steep, short records may have no end-matched segment. In
+%   noiseXu references (validation/checkShapeNoiseEndMatched_v001.m) the
+%   call errored ("shapeNoise:noSegment", or "shapeNoise:segmentAlpha"
+%   when the segment is too short to estimate) for N 3000 at fs 133 in 6%
+%   of references at alpha 5.5 and 30% at 6, none below; for N 1000 at
+%   fs 240 in 1% at alpha 4, 16% at 4.5, 58% at 5, 79% at 5.5, 82% at 6.
+%   Median L/N fell from 0.97 (alpha 3) to 0.53 (alpha 6) at N 3000.
 %
 %   TEMPLATE-SUBTRACTED DATA: pass only the part of the residual the
 %   template actually covered. A stretch left at exactly zero (an uncovered
@@ -130,7 +138,14 @@ L = seg.L;
 if isempty(alpha)
     target = NaN(1, C);
     for ch = 1:C
-        target(ch) = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2));
+        try
+            target(ch) = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2));
+        catch cause
+            err = MException("shapeNoise:segmentAlpha", ...
+                "channel %d: the end-matched segment (L = %d of %d samples) is too short to estimate its alpha: %s", ...
+                ch, L, N, cause.message);
+            throw(addCause(err, cause));
+        end
     end
 elseif isscalar(alpha)
     target = repmat(alpha, 1, C);

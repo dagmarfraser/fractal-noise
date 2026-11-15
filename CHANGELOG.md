@@ -40,33 +40,79 @@ move to `f0*h` and `f0/h`, and the median rejects them (same signal:
 - `Resampling="legacy"` reproduces 1.x bit for bit and warns on every
   call (`estimateIRASA:legacyResampling`). It is not IRASA.
 
-### Breaking: `shapeNoise` swaps on the differenced series by default
+### Breaking: `shapeNoise` builds an end-matched random-phase surrogate
 
 **Problem.** `shapeNoise` copied `abs(fft(resid))` onto the carrier's
 phase. For a steep series whose ends do not meet, that magnitude is
-mostly end-mismatch leakage (f^-2) above the lowest bins. The surrogate
-stayed steep only when the carrier's own end jump supplied matching
-phases. With the `"xu"` carrier, 3 to 25% of surrogates between alpha 3
-and 6 came out more than 0.5 shallower than `resid` (22% at alpha 3.5,
-fs 133, N 3000; `validation/checkShapeNoisePrewhiten_v001.m`). At
-alpha 4, carriers in the bottom third for end mismatch gave 58% shallow
-surrogates and the rest 1% or none
-(`validation/checkShapeNoiseMechanism_v001.m`). Medians were unaffected,
-which is why mean-based checks did not show it.
+mostly end-mismatch leakage (f^-2) above the lowest bins (Schreiber &
+Schmitz 2000, Sec. 4.5). The surrogate stayed steep only when the
+carrier's own end jump supplied matching phases. With the `"xu"`
+carrier, 3 to 25% of surrogates between alpha 3 and 6 came out more
+than 0.5 shallower than `resid` (fs 133, N 3000). At alpha 4, carriers
+in the bottom third for end mismatch gave 58% shallow surrogates and the
+rest 1% or none (`validation/checkShapeNoiseMechanism_v001.m`). Medians
+were unaffected, which is why mean-based checks did not show it. On real
+template-subtracted movement residuals the same construction left the
+surrogate's filtered velocity and curvature noise 14-30% short of the
+residual's for two of five datasets.
 
-**Fix.** New option `Prewhiten`, `"auto"` (default) or 0..3: difference
-`resid` and the carrier k times, swap there, integrate k times, centre
-on `mean(resid)` and rescale to `std(resid)`. `"auto"` uses
-k = min(3, floor((alpha + 1)/2)). Share more than 0.5 shallow: 0% in
-every cell at N 3000, at most 2% at N 1000.
+A differenced-domain swap tried on this branch (`Prewhiten`) fixed the
+exponent on synthetic noise but failed on real residuals: the surrogate
+was 98-100% integration drift and its derivative noise 4-13% of the
+residual's. It was never released and has been removed.
+
+**Fix.** The default, `Method="endMatched"`:
+
+1. Find the longest length L at which every channel has a segment whose
+   wrap-around step and wrapped second differences are no larger than
+   the segment's own mean terms (`FairShareTol=1`; segment measures from
+   Schreiber & Schmitz 2000, Eqs. 16-17; longest-first search after
+   Nakamura, Small & Hirata 2006). Each channel takes its own best
+   segment of that length.
+2. Put uniformly random phases on that segment's amplitude spectrum,
+   remove the mean, scale to its std.
+3. Accept a draw when its `estimateWhittleAlpha` exponent is within
+   `AlphaTol` (0.3) of the target; up to `MaxDraw` (20) draws.
+
+On real residuals (Fraser, Hickman, Cook) the surrogate's filtered
+velocity and acceleration noise is 1.00-1.02 of the residual's. On
+synthetic noise (`validation/checkShapeNoiseEndMatched_v001.m`):
+100 noiseXu references per cell, alpha 0.5-6, fs 133 N 3000 and fs 240
+N 1000. Legacy: 1-27% of surrogates more than 0.5 shallower than the
+reference at alpha 3-6 (27% at alpha 3.5, N 3000; 22% at alpha 4,
+N 1000). End-matched: every built surrogate was accepted within 20
+draws, first- and second-difference noise 1.00 of the segment's
+(median), none shallow (the selection step guarantees the exponent, so
+that column is a check of the code, not of the method). Median L/N 0.97
+at alpha 3, 0.72 at 5 and 0.53 at 6 (N 3000).
+
+**Range.** Steep, short records may have no end-matched segment, and
+the call then errors (`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha`
+when the segment is too short to estimate its exponent). At N 3000,
+fs 133: 6% of references at alpha 5.5 and 30% at 6, none below. At
+N 1000, fs 240: 1% at alpha 4, 16% at 4.5, 58% at 5, 79% at 5.5, 82% at
+6. These cases are errors, not quietly shortened or substituted.
 
 **What changes for callers**
 
-- Output differs from 1.x for alpha of 1 and above; identical below.
-- With `Prewhiten` above 0, `abs(fft(n))` no longer equals
-  `abs(fft(resid))`; the k-th differences match instead.
-- `Prewhiten=0` reproduces 1.x, and the source `shapeXu_local`, bit for
-  bit.
+- The output has L rows, not `numel(resid)`; `info.L` and `info.Lfrac`
+  say how long. Whatever you add it to must have length L.
+- `resid` may be N-by-C (e.g. two movement axes); all channels share L.
+- `alpha` is the selection target. `[]` uses each segment's own
+  `estimateWhittleAlpha` exponent over `AlphaBand` (default 1-20 Hz).
+- New second output `info` (segment, wrap terms, target, draws,
+  accepted, achieved gap, estimator failures).
+- A channel with no accepted draw is NaN, with the warning
+  `shapeNoise:noAcceptedDraw`.
+- Estimator failures during selection count as rejected draws and are
+  reported (`info.nEstFail`, warning `shapeNoise:estimateFailed`).
+- A run of three or more exact zeros at either end of `resid` is an
+  error (`shapeNoise:zeroTail`): an uncovered template tail would
+  otherwise be taken as part of the segment. Pass only the covered
+  residual.
+- `PhaseSource` applies only to `Method="legacy"`.
+- `Method="legacy"` reproduces 1.x, and the source `shapeXu_local`, bit
+  for bit, and warns on every call (`shapeNoise:legacyConstruction`).
 
 ### `checkSpectralKnee`
 
@@ -80,9 +126,12 @@ every cell at N 3000, at most 2% at N 1000.
 New: default is `"irasa"`; `"legacy"` warns; peak removed under the
 default and kept under `"legacy"` (both PSDs); agreement on peak-free
 noise; steep break-free noise with `Prewhiten`; the NaN mask; the band
-error; three `checkSpectralKnee` tests for the new option; five
-`shapeNoise` tests (legacy identity at `Prewhiten=0`, tail removed at
-alpha 4, std and mean kept, `"auto"` equals 0 below alpha 1, error paths). Tests that pin
+error; three `checkSpectralKnee` tests for the new option; `shapeNoise`
+end-matched tests (same output as the research source for the same
+seed; exponent and first/second-difference noise held at alpha 4; segment
+bookkeeping; two channels share L; reproducible with a seed; zero tail,
+constant channel, alpha size and PhaseSource errors; no accepted draw
+gives NaN and warns; legacy warns). Tests that pin
 1.x numbers call `"legacy"` explicitly.
 
 ### Documentation
@@ -93,7 +142,11 @@ estimators agreeing, two of which were the same computation, so the
 (links point to the shipped .m pages; gains `estimateWhittleAlpha`).
 README rewritten to lead with what the toolbox is for, with an
 "Upgrading from 1.x" section. `examples/CompareFftnoiseVsShapedXu` gains
-reference and Whittle columns and now prints line breaks.
+reference and Whittle columns, prints line breaks, and compares
+`fftnoise` with the end-matched surrogate. `examples/CompareNoiseGenerators`
+compares the end-matched and legacy constructions.
+`validation/checkShapeNoiseEndMatched_v001.m` replaces the legacy-only
+alpha check.
 
 ### Test infrastructure
 

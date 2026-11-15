@@ -64,9 +64,10 @@ signals.
 - `noiseXu` -- generate 1/f^alpha noise via Xu's (2019) fractional-
   differencing method (an exact spectral-synthesis method, not a filter
   approximation)
-- `shapeNoise` -- impose an empirical residual's amplitude spectrum onto
-  a chosen phase carrier (5 carrier options, including MATLAB's built-in
-  `dsp.ColoredNoise` and a custom-function-handle option)
+- `shapeNoise` -- random-phase surrogate of an empirical residual, built
+  on its longest end-matched segment and kept only when its exponent
+  matches, so steep spectra and derivative noise survive (the 1.x
+  phase-carrier construction remains as `Method="legacy"`)
 - `estimateIRASA` -- recover the spectral exponent (alpha) and noise
   magnitude from a signal via IRASA (Wen & Liu, 2016), with two optional
   independent cross-validation checks: a FieldTrip comparison panel, and

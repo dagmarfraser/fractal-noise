@@ -6,8 +6,8 @@ Use it when you need to:
 
 1. **Simulate noise with a chosen spectral exponent**, for example to sweep alpha in a simulation grid or to test an analysis pipeline against known noise.
    `x = noiseXu(3000, 4.5, 1, 240);`
-2. **Build a null model of a signal you measured**: a surrogate with the same spectrum as your residual but random phase, which still holds its shape at steep alpha where ordinary Fourier phase randomisation does not.
-   `s = shapeNoise(myResidual, 240, alpha);`
+2. **Build a null model of a signal you measured**: a random-phase surrogate of your residual that keeps both its spectral exponent and its derivative noise at steep alpha, where ordinary Fourier phase randomisation of the whole record does not.
+   `[s, info] = shapeNoise(myResidual, 240, []);`
 3. **Measure the spectral exponent of a signal**, with an estimator that stays accurate at steep alpha, and separate a scale-free background from rhythmic peaks.
    `alpha = estimateWhittleAlpha(x, 240, 1, 20);`
 4. **Check whether a spectrum is really a power law** or bends at a knee.
@@ -17,7 +17,7 @@ Typical users: movement science and motor control, psychophysics, physiology, an
 
 MIT licence. Base MATLAB for the generator, the surrogate and the Whittle estimator; Signal Processing Toolbox for the other two. Current release: see [CHANGELOG.md](CHANGELOG.md). Also on MATLAB File Exchange (184251).
 
-> **v2.0.0 fixes two things.** `estimateIRASA` did not remove oscillatory peaks up to v1.2.0, so its exponent was a plain spectral slope. `shapeNoise` gave a shallow surrogate about one time in five at alpha 3.5-4.5. Both defaults are now correct, and both old behaviours stay available by name. See [Upgrading from 1.x](#upgrading-from-1x).
+> **v2.0.0 fixes two things.** `estimateIRASA` did not remove oscillatory peaks up to v1.2.0, so its exponent was a plain spectral slope. `shapeNoise` gave a shallow surrogate about one time in five at alpha 3.5-4.5; it now builds its surrogate from an end-matched segment of the residual, so the surrogate is shorter than the input. Both defaults are now correct, and both old behaviours stay available by name. See [Upgrading from 1.x](#upgrading-from-1x).
 
 ## Quick start
 
@@ -25,7 +25,7 @@ MIT licence. Base MATLAB for the generator, the surrogate and the Whittle estima
 x = noiseXu(3000, 4.5, 1.0, 240);                  % alpha 4.5, unit SD, 240 Hz
 [a, k] = estimateWhittleAlpha(x, 240, 1, 20)       % exponent over 1-20 Hz, and the differencing order used
 aI = estimateIRASA(x, 240, 1, 20, Prewhiten=k);    % IRASA on the same band, safe at steep alpha
-s = shapeNoise(myResidual, 240, a);                % surrogate of a measured residual
+[s, info] = shapeNoise(myResidual, 240, []);      % surrogate of a measured residual (length info.L)
 r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 ```
 
@@ -34,7 +34,7 @@ r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 | Function | What it does | Needs |
 |---|---|---|
 | `noiseXu` | Generates 1/f^alpha noise by fractional differencing (Xu 2019), alpha from -2 to 7 | Base MATLAB |
-| `shapeNoise` | Surrogate of a measured signal: its amplitude spectrum on a chosen phase carrier (default `noiseXu`), swapped on the differenced series so steep spectra survive | Base MATLAB (two optional carriers need Signal Processing / DSP System Toolbox) |
+| `shapeNoise` | Surrogate of a measured signal: random phases on the amplitude spectrum of its longest end-matched segment, kept only if its exponent matches | Base MATLAB (`Method="legacy"` carriers `"pinknoise"`/`"dsp"` need Signal Processing / DSP System Toolbox) |
 | `estimateWhittleAlpha` | Spectral exponent over a band by prewhitened local Whittle; the one to use at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA (Wen & Liu 2016): spectral exponent and noise magnitude of the scale-free part, with oscillatory peaks removed | Signal Processing Toolbox; optional FieldTrip cross-check |
 | `checkSpectralKnee` | Lorentzian knee against a fixed power law (Preston, Smith & Voytek 2026) | Signal Processing Toolbox |
@@ -80,7 +80,13 @@ The break makes spectral estimators look better on default `noiseXu` output than
 - `sigmaEst` is smaller than before, because the valid range now stops below `fs/(2*max(Hset))`.
 - Bands that reach above `fs/(2*max(Hset))` now raise an error.
 - To reproduce a 1.x result exactly, pass `Resampling="legacy"`. It warns on every call.
-- `shapeNoise` now differences the signal and the carrier before swapping magnitude and phase (`Prewhiten="auto"`), then integrates back. Before, 10-25% of surrogates at alpha 3.5-5 came out more than 0.5 shallower than the signal they were built from; now 2% or fewer do. Output is unchanged below alpha 1. With `Prewhiten` above 0 the surrogate matches the magnitude spectrum of the differenced signal, not `abs(fft(x))` itself. `Prewhiten=0` reproduces 1.x exactly.
+- `shapeNoise` builds a different surrogate. It finds the longest length L at which each channel has a segment whose ends meet (the wrap-around step and slope are no larger than the segment's own average steps), puts uniformly random phases on that segment's amplitude spectrum, and redraws until the exponent is within 0.3 of the target. Before, 3-25% of surrogates at alpha 3-6 came out more than 0.5 shallower than the signal they were built from, because a Fourier surrogate of a record whose ends do not meet spreads the end jump across all frequencies.
+- The output has L rows, not `numel(resid)`. Add it to something of length L.
+- A second output, `info`, gives the segment (`i0`, `i1`, `L`, `Lfrac`), the target and achieved exponent, and the draw count. A channel with no accepted draw comes back as NaN with a warning.
+- Steep, short records may have no segment whose ends meet; `shapeNoise` then errors rather than return something else. In 1000-sample noise at 240 Hz this happens for 16% of series at alpha 4.5 and most above 5; in 3000 samples, only above alpha 5 (see the `shapeNoise` help).
+- `alpha` is now the target for the selection step. Pass `[]` to use the segment's own exponent.
+- A residual with a run of exact zeros at either end (for example an uncovered template tail) is an error. Pass only the part the template covered.
+- `PhaseSource` now applies only to `Method="legacy"`, which reproduces 1.x bit for bit and warns on every call.
 
 ## Installation
 
@@ -96,7 +102,7 @@ Requires MATLAB R2025a or later for the documentation (plain-text Live Code form
 
 ## Examples and documentation
 
-- `examples/CompareFftnoiseVsShapedXu.m`: why Fourier phase randomisation (`fftnoise`) fails to keep a steep spectrum, and how `shapeNoise` avoids it.
+- `examples/CompareFftnoiseVsShapedXu.m`: why Fourier phase randomisation of a whole record (`fftnoise`) fails to keep a steep spectrum, and how `shapeNoise` avoids it.
 - `examples/CompareNoiseGenerators.m`: `noiseXu` beside the built-in generators.
 - `doc/`: getting started and function pages.
 

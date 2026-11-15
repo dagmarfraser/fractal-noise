@@ -36,14 +36,16 @@ fprintf("Whittle alpha=%.3f (differencing order %d)\n", alphaW, kUsed);
 %%
 %[text] To keep IRASA's peak removal at steep alpha, pass that order on: `estimateIRASA(n, 60, 1.0, 15.0, Prewhiten=kUsed)`.
 %[text] ## 3. Shape: `shapeNoise`
-%[text] Imposes an **empirical** residual's amplitude spectrum onto a fresh phase carrier -- useful for generating surrogate data that matches a real signal's spectral shape without reusing its exact phase (and therefore its exact realisation).
+%[text] Builds a random-phase surrogate of an **empirical** residual -- data with the residual's spectrum and derivative noise, but not its realisation. A Fourier surrogate of a whole record whose ends do not meet spreads the end jump over every frequency, so `shapeNoise` first finds the longest segment whose ends meet, randomises the phases of that segment, and keeps a draw only if its exponent is within 0.3 of the target (`[]`: the segment's own). The surrogate therefore has `info.L` samples, not `numel(myResidual)`.
 myResidual = cumsum(randn(500, 1));
 myResidual = myResidual - mean(myResidual);
 
-surrogate = shapeNoise(myResidual, 100, 3.0);
-fprintf("Surrogate std=%.3f, original std=%.3f (should match)\n", std(surrogate), std(myResidual));
+[surrogate, info] = shapeNoise(myResidual, 100, []);
+seg = myResidual(info.i0:info.i1);
+fprintf("Segment %d-%d (L=%d, %.0f%% of the record); std %.3f vs %.3f; alpha %.2f vs target %.2f\n", ...
+    info.i0, info.i1, info.L, 100 * info.Lfrac, std(surrogate), std(seg), info.alphaTarget + info.dAlpha, info.alphaTarget);
 %%
-%[text] Five phase-carrier choices are available via `PhaseSource`: `"xu"` (default), `"white"`, `"pinknoise"`, `"dsp"`, or a custom function handle. See `shapeNoise`'s docstring for when each applies.
+%[text] `resid` can have one column per channel (e.g. x and y of a movement); all channels share L. For template-subtracted data, pass only the part the template covered: a run of exact zeros at either end is an error. `Method="legacy"` gives the 1.x construction (with its `PhaseSource` carriers) for reproducing earlier results, and warns.
 %[text] ## 4. Diagnose: `checkSpectralKnee`
 %[text] Tests whether a residual's spectrum is better explained by a Lorentzian (kneed) model than a plain power law -- relevant because IRASA-based alpha estimates (like `estimateIRASA` above) assume a scale-free, non-kneed spectrum.
 result = checkSpectralKnee(myResidual, 100);
@@ -53,8 +55,8 @@ fprintf("Verdict: %s (deltaAIC=%.2f, knee at %.3f Hz, in fit band: %d)\n", ...
 %[text] See `examples/KneeCheckWorkedExample.m` for this diagnostic applied to real kinematic data, where three of five datasets came back clean and two showed a genuine but harmless below-the-fit-band knee.
 %[text] ## Optional toolbox dependencies
 %[text] Two functions have optional features that degrade **visibly**, not silently, when the underlying toolbox isn't installed: requesting the feature without the dependency returns a clearly-flagged unavailable result and a warning, never a silent fallback or an outright crash.
-%[text] - `shapeNoise(..., PhaseSource="pinknoise")` needs MATLAB's built-in  `pinknoise` function (Signal Processing Toolbox).
-%[text] - `shapeNoise(..., PhaseSource="dsp")` needs `dsp.ColoredNoise` (DSP System Toolbox).
+%[text] - `shapeNoise(..., Method="legacy", PhaseSource="pinknoise")` needs MATLAB's built-in  `pinknoise` function (Signal Processing Toolbox).
+%[text] - `shapeNoise(..., Method="legacy", PhaseSource="dsp")` needs `dsp.ColoredNoise` (DSP System Toolbox).
 %[text] - `estimateIRASA(..., CompareFieldTrip=true)` needs FieldTrip ([https://www.fieldtriptoolbox.org](https://www.fieldtriptoolbox.org)) on the path, specifically  `ft_defaults` having been run. \
 %[text] None of the core functions' default behaviour needs any of these.
 %[text] ## Where to go next

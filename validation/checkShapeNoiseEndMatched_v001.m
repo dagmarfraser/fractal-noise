@@ -8,8 +8,8 @@
 %   endMatched also: median L/N and share with no accepted draw (NaN, counted, not scored).
 % Whittle and shapeNoise failures are counted and printed, never hidden.
 cfg = [133 3000; 240 1000];  alphas = 0.5:0.5:6;  nRep = 100;  fLow = 1;  fHigh = 20;
-w = warning("off", "shapeNoise:legacyConstruction");  cw = onCleanup(@() warning(w));
-warning("off", "shapeNoise:noAcceptedDraw");
+w = warning;  cw = onCleanup(@() warning(w));   % legacy warns on every call by design; no-accept is counted in noAcc
+warning("off", "shapeNoise:legacyConstruction");  warning("off", "shapeNoise:noAcceptedDraw");
 q = @(v, p) v(min(numel(v), max(1, round(p * numel(v)))));
 for ci = 1:size(cfg, 1)
     fs = cfg(ci, 1);  N = cfg(ci, 2);  nFail = 0;

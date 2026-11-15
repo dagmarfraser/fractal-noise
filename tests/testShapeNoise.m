@@ -207,6 +207,18 @@ classdef testShapeNoise < matlab.unittest.TestCase
             testCase.verifyError(@() shapeNoise(ones(200, 1), 100, []), "shapeNoise:constant");
         end
 
+        function testNoEndMatchedSegmentErrors(testCase)
+            % A ramp: every segment's wrap step is (L-1) mean steps, so none passes fairShare.
+            rng(14);  x = (1:300)' + 0.01 * randn(300, 1);
+            testCase.verifyError(@() shapeNoise(x, 100, []), "shapeNoise:noSegment");
+        end
+
+        function testSegmentTooShortForAlphaErrors(testCase)
+            % 80 white samples: a segment is found, but too short for estimateWhittleAlpha.
+            rng(15);  x = randn(80, 1);
+            testCase.verifyError(@() shapeNoise(x, 100, []), "shapeNoise:segmentAlpha");
+        end
+
         function testAlphaSizeErrors(testCase)
             rng(13);  X = noiseXu(600, 2.0, 1, 100);  X = [X, X(end:-1:1)];
             testCase.verifyError(@() shapeNoise(X, 100, [2 2 2]), "shapeNoise:alphaSize");
