@@ -36,11 +36,12 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %
 %   RANGE: steep, short records may have no end-matched segment. In
 %   noiseXu references (validation/checkShapeNoiseEndMatched_v001.m) the
-%   call errored ("shapeNoise:noSegment", or "shapeNoise:segmentAlpha"
-%   when the segment is too short to estimate) for N 3000 at fs 133 in 6%
-%   of references at alpha 5.5 and 30% at 6, none below; for N 1000 at
-%   fs 240 in 1% at alpha 4, 16% at 4.5, 58% at 5, 79% at 5.5, 82% at 6.
-%   Median L/N fell from 0.97 (alpha 3) to 0.53 (alpha 6) at N 3000.
+%   default call errored ("shapeNoise:noSegment", or "shapeNoise:segmentAlpha"
+%   when the segment is too short to estimate) for N 1000 at fs 240 in 1%
+%   of references at alpha 4.5, 12% at 5, 49% at 5.5, 55% at 6, none
+%   below; for N 3000 at fs 133 never (alpha up to 6). Median L/N fell
+%   from 0.97 (alpha 3) to 0.70 (alpha 6) at N 3000, and to 0.52 at N 1000.
+%   SegmentRule "tol" is stricter at these lengths and fails more often.
 %
 %   TEMPLATE-SUBTRACTED DATA: pass only the part of the residual the
 %   template actually covered. A stretch left at exactly zero (an uncovered
