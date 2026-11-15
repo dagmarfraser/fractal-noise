@@ -27,6 +27,8 @@
             {"name":"Method", "kind":"namevalue", "type":["choices={'endMatched','legacy'}"]},
             {"name":"AlphaTol", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
             {"name":"MaxDraw", "kind":"namevalue", "type":["numeric", "integer", "positive", "scalar"]},
+            {"name":"SegmentRule", "kind":"namevalue", "type":["choices={'detect','budget','tol'}"]},
+            {"name":"SegmentBudget", "kind":"namevalue", "type":["numeric", "positive", "scalar", "<1"]},
             {"name":"FairShareTol", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
             {"name":"MinLength", "kind":"namevalue", "type":["numeric", "integer", "scalar", ">=5"]},
             {"name":"AlphaBand", "kind":"namevalue", "type":["numeric", "numel=2"]},

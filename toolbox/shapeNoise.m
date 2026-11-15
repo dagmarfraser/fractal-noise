@@ -4,12 +4,16 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   [n, info] = shapeNoise(resid, fs, alpha) returns an end-matched
 %   random-phase surrogate of resid (the default since v2.0.0):
 %     1. Segment: the longest length L at which every channel of resid has
-%        a sub-segment whose wrap-around step and wrapped second differences
-%        are no larger than the segment's own mean terms (the "fairShare"
-%        rule, Tol = 1; segment measures from Schreiber & Schmitz 2000,
-%        Physica D 142, Eqs. 16-17; longest-first search after the stepwise
-%        stopping of Nakamura, Small & Hirata 2006, Phys Rev E 74, 026205).
-%        Each channel takes its own best segment of that common length.
+%        a sub-segment whose ends meet: its wrap-around step, and each of its
+%        two wrapped second differences, is no larger than the largest step
+%        expected among the segment's own L-1 steps (L-2 second differences).
+%        That level is q(n) = chi2inv(1 - 1/n, 1), about 2 ln n, times the
+%        mean squared step: the wrap must not stand out from the segment's
+%        own steps, and no tolerance is chosen (SegmentRule "detect").
+%        Segment measures from Schreiber & Schmitz 2000, Physica D 142,
+%        Eqs. 16-17; longest-first search after the stepwise stopping of
+%        Nakamura, Small & Hirata 2006, Phys Rev E 74, 026205. Each channel
+%        takes its own best segment of that common length.
 %     2. Surrogate: |FFT(segment)| on uniformly random phases, mean removed,
 %        scaled to std(segment).
 %     3. Alpha selection: a draw is accepted when the estimateWhittleAlpha
@@ -19,8 +23,8 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   steep series whose ends do not meet carries the end jump as broadband
 %   leakage (Schreiber & Schmitz 2000), so the whole record cannot be
 %   matched. Whatever you add the noise to must have length L too.
-%   The fairShare tolerance bounds the extra derivative energy from the wrap
-%   at 1/(L-1) of the first-difference energy and 2/(L-2) of the second.
+%   Under "detect" the wrap adds at most q(L-1)/(L-1) to the first-
+%   difference energy (about 4% at L 280, 1.4% at 1000, 0.5% at 3000).
 %
 %   Validated on real template-subtracted movement residuals (Fraser,
 %   Hickman, Cook; PowerLawSimulationPreReg runner v024): filtered velocity
@@ -46,7 +50,9 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % SYNTAX:
 %   [n, info] = shapeNoise(resid, fs, [])          % target alpha = segment's own (recommended)
 %   [n, info] = shapeNoise(resid, fs, alpha)       % explicit target, scalar or 1-by-C
-%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, FairShareTol=1, MinLength=32, AlphaBand=[1 20])
+%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, MinLength=32, AlphaBand=[1 20])
+%   [n, info] = shapeNoise(___, SegmentRule="budget", SegmentBudget=0.01)   % wrap adds <= 1% derivative energy
+%   [n, info] = shapeNoise(___, SegmentRule="tol", FairShareTol=1)          % wrap <= Tol x mean terms
 %   n = shapeNoise(resid, fs, alpha, Method="legacy")                      % 1.x construction; warns
 %   n = shapeNoise(resid, fs, alpha, Method="legacy", PhaseSource="white") % legacy carriers
 %
@@ -62,7 +68,17 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   MaxDraw      - Draws per channel before giving up (20). A channel with
 %                  no accepted draw is returned as NaN, with a warning
 %                  ("shapeNoise:noAcceptedDraw") and info.accepted false.
-%   FairShareTol - The fairShare tolerance (1).
+%   SegmentRule  - How a segment's ends must meet:
+%                  "detect" (default) wrap step <= q(L-1) and each wrapped
+%                          second difference <= q(L-2) times the segment's
+%                          mean squared first / second difference;
+%                  "budget" the wrap adds at most SegmentBudget of the
+%                          segment's first- and second-difference energy;
+%                  "tol"    wrap step and mean wrapped second difference
+%                          <= FairShareTol times the mean terms (the rule
+%                          of the v2.0.0 drafts; stricter at long L).
+%   SegmentBudget - Energy share for "budget" (no default; required there).
+%   FairShareTol - Tolerance for "tol" (1).
 %   MinLength    - Shortest segment searched (32 samples). No segment at
 %                  or above it is an error ("shapeNoise:noSegment").
 %   AlphaBand    - Band in Hz for estimateWhittleAlpha
@@ -72,8 +88,10 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %
 % OUTPUTS:
 %   n    - L-by-C surrogate ("endMatched"), or numel(resid)-by-1 ("legacy").
-%   info - "endMatched": i0, i1 (1-by-C segment start and end in resid), L,
-%          Lfrac (L/N), cJump, cSlip (wrap terms over mean terms, <= Tol),
+%   info - "endMatched": SegmentRule, i0, i1 (1-by-C segment start and end
+%          in resid), L, Lfrac (L/N), cJump, cSlip, cSlipMax (squared wrap
+%          step, mean and larger wrapped second difference, over the
+%          segment's mean terms; 1-by-C), qJ, qS (the "detect" levels at L),
 %          alphaTarget, nDraw, accepted, dAlpha, nEstFail (draws whose alpha
 %          estimate errored, counted as rejected and warned about as
 %          "shapeNoise:estimateFailed"; 1-by-C). "legacy": Method only.
@@ -88,8 +106,9 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % See also: estimateWhittleAlpha, noiseXu, estimateIRASA
 %
 % Toolbox: fractalnoise
-% Extracted from: PowerLawSimulationPreReg src/endToEndSegment_v004.m
-% (commonLength mode) and src/functions/endMatchedNoise_v001.m, with
+% Extracted from: PowerLawSimulationPreReg src/endToEndSegment_v006.m
+% (rules "detect", "budget", "tol"; chi2inv(1 - p, 1) = 2*erfcinv(p)^2, so
+% no Statistics Toolbox) and src/functions/endMatchedNoise_v001.m, with
 % alphaPWLW_v001 replaced by its toolbox copy estimateWhittleAlpha; legacy
 % path from src/functions/generateLoopClosureNoise_v003.m (shapeXu_local).
 
@@ -100,6 +119,8 @@ arguments
     options.Method (1, 1) string {mustBeMember(options.Method, ["endMatched", "legacy"])} = "endMatched"
     options.AlphaTol (1, 1) double {mustBePositive} = 0.3
     options.MaxDraw (1, 1) double {mustBeInteger, mustBePositive} = 20
+    options.SegmentRule (1, 1) string {mustBeMember(options.SegmentRule, ["detect", "budget", "tol"])} = "detect"
+    options.SegmentBudget double = []
     options.FairShareTol (1, 1) double {mustBePositive} = 1
     options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 32
     options.AlphaBand (1, 2) double = [NaN NaN]
@@ -133,7 +154,10 @@ if any(isnan(band)), band = [1, min(20, fs/2 - 1)]; end
 checkZeroTail(resid);
 if any(std(resid, 0, 1) == 0), error("shapeNoise:constant", "a channel of resid is constant."); end
 
-[i0, i1, seg] = fairShareSegments(resid, options.FairShareTol, options.MinLength);
+if options.SegmentRule == "budget" && ~(isscalar(options.SegmentBudget) && options.SegmentBudget > 0 && options.SegmentBudget < 1)
+    error("shapeNoise:segmentBudget", "SegmentRule=""budget"" needs a SegmentBudget in (0, 1).");
+end
+[i0, i1, seg] = endMatchedSegments(resid, options.SegmentRule, options.FairShareTol, options.SegmentBudget, options.MinLength);
 L = seg.L;
 if isempty(alpha)
     target = NaN(1, C);
@@ -167,8 +191,8 @@ if ~all(accepted)
         "No draw within AlphaTol %.2f of the target in %d tries for channel(s) %s; returned as NaN.", ...
         options.AlphaTol, options.MaxDraw, mat2str(find(~accepted)));
 end
-info = struct("Method", "endMatched", "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, "cJump", seg.cJump, ...
-    "cSlip", seg.cSlip, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail);
+info = struct("Method", "endMatched", "SegmentRule", seg.rule, "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, ...
+    "cJump", seg.cJump, "cSlip", seg.cSlip, "cSlipMax", seg.cSlipMax, "qJ", seg.qJ, "qS", seg.qS, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail);
 if any(nEstFail > 0)
     warning("shapeNoise:estimateFailed", ...
         "estimateWhittleAlpha failed on %d draw(s) (counted as rejected; info.nEstFail). Last message: %s", ...
@@ -191,32 +215,41 @@ for ch = 1:size(S, 2)
 end
 end
 
-function [i0, i1, info] = fairShareSegments(S, tol, minLength)
-% endToEndSegment_v004, Mode "commonLength".
+function [i0, i1, info] = endMatchedSegments(S, rule, tol, budget, minLength)
+% endToEndSegment_v006 (rules "detect", "budget", "tol"); chi2inv(1 - p, 1) written as 2*erfcinv(p)^2 (base MATLAB).
 [N, C] = size(S);
 if N < minLength
     error("shapeNoise:short", "resid has %d samples, fewer than MinLength %d.", N, minLength);
 end
 e1 = [zeros(1, C); cumsum(diff(S).^2)];  e2 = [zeros(1, C); cumsum(diff(S, 2).^2)];
+q = @(n) 2 * erfcinv(1 / n)^2;
 i0 = NaN(1, C);  i1 = NaN(1, C);
 for L = N:-1:minLength
     a = (1:N - L + 1)';  b = a + L - 1;
     m1 = (e1(b, :) - e1(a, :)) / (L - 1);  m2 = (e2(b - 1, :) - e2(a, :)) / (L - 2);
     cj = (S(a, :) - S(b, :)).^2 ./ m1;
-    cs = ((S(a + 1, :) - 2 * S(a, :) + S(b, :)).^2 + (S(a, :) - 2 * S(b, :) + S(b - 1, :)).^2) / 2 ./ m2;
-    c = max(cj, cs);  c(~isfinite(c)) = Inf;
+    w1 = (S(a + 1, :) - 2 * S(a, :) + S(b, :)).^2;  w2 = (S(a, :) - 2 * S(b, :) + S(b - 1, :)).^2;
+    switch rule
+        case "tol",    c = max(cj / tol, (w1 + w2) / 2 ./ m2 / tol);
+        case "budget", c = max(cj / (budget * (L - 1)), (w1 + w2) / 2 ./ m2 / (budget * (L - 2) / 2));
+        case "detect", c = max(cj / q(L - 1), max(w1, w2) ./ m2 / q(L - 2));
+    end
+    c(~isfinite(c)) = Inf;
     [cMin, k] = min(c, [], 1);
-    if all(cMin <= tol), i0 = a(k)';  i1 = b(k)';  break, end
+    if all(cMin <= 1), i0 = a(k)';  i1 = b(k)';  break, end
 end
 if any(isnan(i0))
-    error("shapeNoise:noSegment", "no length of %d or more samples has a segment within FairShareTol %g in all %d channels.", ...
-        minLength, tol, C);
+    error("shapeNoise:noSegment", "no length of %d or more samples has an end-matched segment in all %d channels (SegmentRule ""%s"").", ...
+        minLength, C, rule);
 end
-info.L = i1(1) - i0(1) + 1;  info.cJump = NaN(1, C);  info.cSlip = NaN(1, C);
+L = i1(1) - i0(1) + 1;
+info = struct("L", L, "rule", rule, "qJ", NaN, "qS", NaN, "cJump", NaN(1, C), "cSlip", NaN(1, C), "cSlipMax", NaN(1, C));
+if rule == "detect", info.qJ = q(L - 1);  info.qS = q(L - 2); end
 for ch = 1:C
-    G = S(i0(ch):i1(ch), ch);
+    G = S(i0(ch):i1(ch), ch);  m2c = mean(diff(G, 2).^2);
+    v1 = (G(2) - 2 * G(1) + G(end))^2;  v2 = (G(1) - 2 * G(end) + G(end - 1))^2;
     info.cJump(ch) = (G(1) - G(end))^2 / mean(diff(G).^2);
-    info.cSlip(ch) = ((G(2) - 2 * G(1) + G(end))^2 + (G(1) - 2 * G(end) + G(end - 1))^2) / 2 / mean(diff(G, 2).^2);
+    info.cSlip(ch) = (v1 + v2) / 2 / m2c;  info.cSlipMax(ch) = max(v1, v2) / m2c;
 end
 end
 

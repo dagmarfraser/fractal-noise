@@ -3,7 +3,7 @@ classdef testShapeNoise < matlab.unittest.TestCase
 %
 % Toolbox: fractalnoise
 % Covers, for the default end-matched surrogate (v2.0.0): source-equivalence
-% with endToEndSegment_v004 + endMatchedNoise_v001, derivative-noise fidelity
+% with endToEndSegment_v006 + endMatchedNoise_v001, derivative-noise fidelity
 % and alpha selection on steep non-periodic noise, segment bookkeeping, two
 % channels, reproducibility, and error paths (zero tail, PhaseSource,
 % constant, alpha size, no segment). For Method="legacy" (the 1.x
@@ -134,23 +134,41 @@ classdef testShapeNoise < matlab.unittest.TestCase
         end
 
         function testMatchesEndMatchedSourceForSameSeed(testCase)
-            % FRACTALNOISE_LEGACY_SRC holds src/functions; endToEndSegment_v004 lives one level up in src/.
-            d = string(getenv("FRACTALNOISE_LEGACY_SRC"));
-            if d ~= "" && isfile(fullfile(d, "..", "endToEndSegment_v004.m"))
-                up = char(java.io.File(fullfile(d, "..")).getCanonicalPath());
-                addpath(up);  testCase.addTeardown(@() rmpath(up));
-            end
-            testCase.assumeTrue(exist("endToEndSegment_v004", "file") == 2 && exist("endMatchedNoise_v001", "file") == 2 ...
-                && exist("alphaPWLW_v001", "file") == 2, ...
-                "endToEndSegment_v004 / endMatchedNoise_v001 not on path (set FRACTALNOISE_LEGACY_SRC); skipping.");
+            % Default ("detect"): same segment as endToEndSegment_v006 and same draws as endMatchedNoise_v001.
+            addPreRegSrc(testCase);
             rng(5);  R = [noiseXu(1500, 4.0, 1, 133), noiseXu(1500, 3.5, 1, 133)];
-            [a0, a1] = endToEndSegment_v004(R, Tol=1, Mode="commonLength");
+            [a0, a1] = endToEndSegment_v006(R, Rule="detect");
             sMaj = R(a0(1):a1(1), 1);  sMin = R(a0(2):a1(2), 2);
             aSeg = [alphaPWLW_v001(sMaj, 133, [1 20]), alphaPWLW_v001(sMin, 133, [1 20])];
             rng(77);  [oMaj, oMin] = endMatchedNoise_v001(sMaj, sMin, 133, aSeg(1), aSeg(2));
             rng(77);  [n, info] = shapeNoise(R, 133, aSeg, MinLength=5);
             testCase.verifyEqual([info.i0; info.i1], [a0; a1]);
             testCase.verifyEqual(n, [oMaj, oMin], "AbsTol", 1e-12);
+        end
+
+        function testSegmentRulesMatchSource(testCase)
+            % All three rules give endToEndSegment_v006's segment; "detect" levels equal chi2inv's.
+            addPreRegSrc(testCase);
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture( ...
+                ["shapeNoise:noAcceptedDraw", "shapeNoise:estimateFailed"]));   % only the segment is under test here
+            rng(6);  R = [noiseXu(1200, 4.5, 1, 240), noiseXu(1200, 3.0, 1, 240)];
+            args = {{"detect", {}, {}}, {"budget", {"SegmentBudget", 0.01}, {"Budget", 0.01}}, {"tol", {}, {"Tol", 1}}};
+            for k = 1:numel(args)
+                [rule, mine, theirs] = args{k}{:};
+                [a0, a1, src] = endToEndSegment_v006(R, "Rule", rule, theirs{:});
+                [~, info] = shapeNoise(R, 240, 3, "SegmentRule", rule, mine{:}, MinLength=5, MaxDraw=1);
+                testCase.verifyEqual([info.i0; info.i1], [a0; a1], "rule " + rule);
+                testCase.verifyEqual([info.cJump, info.cSlip, info.cSlipMax], [src.cJump, src.cSlip, src.cSlipMax], ...
+                    "RelTol", 1e-12, "rule " + rule);
+                if rule == "detect"
+                    testCase.verifyEqual([info.qJ, info.qS], [src.qJ, src.qS], "RelTol", 1e-10);
+                end
+            end
+        end
+
+        function testBudgetRuleNeedsBudget(testCase)
+            rng(16);  x = noiseXu(800, 3.0, 1, 100);
+            testCase.verifyError(@() shapeNoise(x, 100, [], SegmentRule="budget"), "shapeNoise:segmentBudget");
         end
 
         function testDerivativeNoiseAndAlphaHeldOnSteepNoise(testCase)
@@ -174,7 +192,9 @@ classdef testShapeNoise < matlab.unittest.TestCase
             testCase.verifySize(n, [info.L, 1]);
             testCase.verifyEqual(info.i1 - info.i0 + 1, info.L);
             testCase.verifyEqual(info.Lfrac, info.L / 2000, "AbsTol", 1e-15);
-            testCase.verifyLessThanOrEqual([info.cJump, info.cSlip], 1 + 1e-12);
+            testCase.verifyEqual(info.SegmentRule, "detect");
+            testCase.verifyLessThanOrEqual(info.cJump, info.qJ * (1 + 1e-12));
+            testCase.verifyLessThanOrEqual(info.cSlipMax, info.qS * (1 + 1e-12));
             testCase.verifyEqual(std(n), std(x(info.i0:info.i1)), "RelTol", 1e-9);
             testCase.verifyTrue(info.accepted);
         end
@@ -208,7 +228,7 @@ classdef testShapeNoise < matlab.unittest.TestCase
         end
 
         function testNoEndMatchedSegmentErrors(testCase)
-            % A ramp: every segment's wrap step is (L-1) mean steps, so none passes fairShare.
+            % A ramp: every segment's wrap step is (L-1) mean steps, far above any rule's level.
             rng(14);  x = (1:300)' + 0.01 * randn(300, 1);
             testCase.verifyError(@() shapeNoise(x, 100, []), "shapeNoise:noSegment");
         end
@@ -237,4 +257,16 @@ classdef testShapeNoise < matlab.unittest.TestCase
             testCase.verifyWarning(@() shapeNoise(x, 100, 2.0, Method="legacy"), "shapeNoise:legacyConstruction");
         end
     end
+end
+
+function addPreRegSrc(testCase)
+% FRACTALNOISE_LEGACY_SRC holds the pre-reg src/functions; endToEndSegment_v006 lives one level up in src/.
+d = string(getenv("FRACTALNOISE_LEGACY_SRC"));
+if d ~= "" && isfile(fullfile(d, "..", "endToEndSegment_v006.m"))
+    up = char(java.io.File(fullfile(d, "..")).getCanonicalPath());
+    addpath(up);  testCase.addTeardown(@() rmpath(up));
+end
+testCase.assumeTrue(exist("endToEndSegment_v006", "file") == 2 && exist("endMatchedNoise_v001", "file") == 2 ...
+    && exist("alphaPWLW_v001", "file") == 2 && exist("chi2inv", "file") == 2, ...
+    "endToEndSegment_v006 / endMatchedNoise_v001 / alphaPWLW_v001 / chi2inv not on path (set FRACTALNOISE_LEGACY_SRC); skipping.");
 end
