@@ -50,5 +50,21 @@ classdef testShapeNoiseGenericity < matlab.unittest.TestCase
             n = shapeNoise(r, 100, [], CheckUncovered=false);
             testCase.verifyTrue(all(isfinite(n(:))) || any(isnan(n(:))));   % runs; a NaN channel is the documented no-draw outcome
         end
+        function testBandEdgesAreExclusive(testCase)
+            rng(2);  r = noiseXu(2000, 3, 1, 100);  r = r - mean(r);
+            testCase.verifyError(@() shapeNoise(r, 100, [], AlphaBand=[0 20]), "shapeNoise:alphaBand");     % fLow must be above 0
+            testCase.verifyError(@() shapeNoise(r, 100, [], AlphaBand=[1 50]), "shapeNoise:alphaBand");     % fHigh must be below fs/2
+        end
+        function testBandActuallyUsedIsReported(testCase)
+            rng(2);  r = noiseXu(2000, 3, 1, 100);  r = r - mean(r);
+            [~, a] = shapeNoise(r, 100, [], AlphaBand="kinematic");   testCase.verifyEqual(a.AlphaBand, [1 20]);
+            [~, b] = shapeNoise(r, 100, [], AlphaBand=[2 30]);        testCase.verifyEqual(b.AlphaBand, [2 30]);
+        end
+        function testZeroTailThresholdIsThreeSamples(testCase)
+            rng(3);  r = noiseXu(2000, 3, 1, 100);  r = r - mean(r);
+            two = r;  two(1:2) = 0;   three = r;  three(1:3) = 0;
+            shapeNoise(two, 100, [], AlphaBand="kinematic");   % two zeros are tolerated: this must not throw shapeNoise:zeroTail
+            testCase.verifyError(@() shapeNoise(three, 100, [], AlphaBand="kinematic"), "shapeNoise:zeroTail");
+        end
     end
 end

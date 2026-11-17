@@ -25,6 +25,8 @@ function [resid, fit, info] = harmonicTemplate(x, fs, f0, K, options)
 %   F0Band - Name-value. [fLow fHigh] in the units of fs for the estimate: the highest peak of the detrended record's
 %          zero-padded FFT magnitude, per channel; if the channel estimates agree within 20% their mean is used, else the
 %          estimate of the channel with the larger peak. REQUIRED when f0 is []: there is no default band.
+%          Keep the band narrow around the expected tempo: on steep noise the highest peak can sit at the band's low edge, and the
+%          estimate is then wrong without any error.
 %   Window - Name-value. Window length in cycles of f0 (default 4, at least 2). The window is at least 2 cycles and at most N samples.
 %   EndAnchored - Name-value. Add a final window that ends on the last sample (default true).
 %   Trend  - Name-value. Include a linear trend in each window (default true).

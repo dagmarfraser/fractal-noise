@@ -95,7 +95,7 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %
 % OUTPUTS:
 %   n    - L-by-C surrogate ("endMatched"), or numel(resid)-by-1 ("legacy").
-%   info - "endMatched": SegmentRule, i0, i1 (1-by-C segment start and end
+%   info - "endMatched": AlphaBand (the [fLow fHigh] actually used), SegmentRule, i0, i1 (1-by-C segment start and end
 %          in resid), L, Lfrac (L/N), cJump, cSlip, cSlipMax (squared wrap
 %          step, mean and larger wrapped second difference, over the
 %          segment's mean terms; 1-by-C), qJ, qS (the "detect" levels at L),
@@ -211,7 +211,7 @@ if ~all(accepted)
         options.AlphaTol, options.MaxDraw, mat2str(find(~accepted)));
 end
 info = struct("Method", "endMatched", "SegmentRule", seg.rule, "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, ...
-    "cJump", seg.cJump, "cSlip", seg.cSlip, "cSlipMax", seg.cSlipMax, "qJ", seg.qJ, "qS", seg.qS, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail);
+    "cJump", seg.cJump, "cSlip", seg.cSlip, "cSlipMax", seg.cSlipMax, "qJ", seg.qJ, "qS", seg.qS, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail, "AlphaBand", band);
 if any(nEstFail > 0)
     warning("shapeNoise:estimateFailed", ...
         "estimateWhittleAlpha failed on %d draw(s) (counted as rejected; info.nEstFail). Last message: %s", ...

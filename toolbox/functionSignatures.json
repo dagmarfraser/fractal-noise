@@ -17,6 +17,24 @@
         ]
     },
 
+    "harmonicContent":
+    {
+        "inputs":
+        [
+            {"name":"x", "kind":"required", "type":["numeric", "2d"]},
+            {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
+            {"name":"f0", "kind":"required", "type":["numeric"]},
+            {"name":"F0Band", "kind":"namevalue", "type":["numeric", "numel=2"]},
+            {"name":"Cut", "kind":"namevalue", "type":["numeric", "positive", "scalar"]},
+            {"name":"Kmax", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]}
+        ],
+        "outputs":
+        [
+            {"name":"K", "type":["double", "scalar"]},
+            {"name":"info", "type":["struct", "scalar"]}
+        ]
+    },
+
     "harmonicTemplate":
     {
         "inputs":
@@ -36,6 +54,47 @@
             {"name":"resid", "type":["double", "2d"]},
             {"name":"fit", "type":["double", "2d"]},
             {"name":"info", "type":["struct", "scalar"]}
+        ]
+    },
+
+    "shapeNoiseWrapper":
+    {
+        "inputs":
+        [
+            {"name":"x", "kind":"required", "type":["numeric", "2d"]},
+            {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
+            {"name":"F0", "kind":"namevalue", "type":["numeric"]},
+            {"name":"F0Band", "kind":"namevalue", "type":["numeric", "numel=2"]},
+            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]},
+            {"name":"Window", "kind":"namevalue", "type":["numeric", ">=2", "scalar"]},
+            {"name":"Alpha", "kind":"namevalue", "type":["numeric", "row"]},
+            {"name":"AlphaBand", "kind":"namevalue", "type":[["numeric", "numel=2"], ["choices={'kinematic'}"]]},
+            {"name":"ShapeArgs", "kind":"namevalue", "type":["cell"]}
+        ],
+        "outputs":
+        [
+            {"name":"n", "type":["double", "2d"]},
+            {"name":"info", "type":["struct", "scalar"]}
+        ]
+    },
+
+    "cetNoiseWrapper":
+    {
+        "inputs":
+        [
+            {"name":"FirstYear", "kind":"namevalue", "type":["numeric", "integer", "scalar"]},
+            {"name":"LastYear", "kind":"namevalue", "type":["numeric"]},
+            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]},
+            {"name":"Window", "kind":"namevalue", "type":["numeric", ">=2", "scalar"]},
+            {"name":"AlphaBand", "kind":"namevalue", "type":["numeric", "numel=2"]},
+            {"name":"File", "kind":"namevalue", "type":["char", "string"]},
+            {"name":"LoadOnly", "kind":"namevalue", "type":["logical", "scalar"]},
+            {"name":"ShapeArgs", "kind":"namevalue", "type":["cell"]}
+        ],
+        "outputs":
+        [
+            {"name":"n"},
+            {"name":"info"}
         ]
     },
 

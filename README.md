@@ -37,6 +37,8 @@ r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 | `noiseXu` | Generates 1/f^alpha noise by fractional differencing (Xu 2019), alpha from -2 to 7 | Base MATLAB |
 | `shapeNoise` | Surrogate of a measured signal: random phases on the amplitude spectrum of its longest end-matched segment, kept only if its exponent matches | Base MATLAB (`Method="legacy"` carriers `"pinknoise"`/`"dsp"` need Signal Processing / DSP System Toolbox) |
 | `harmonicTemplate` | Windowed harmonic-regression template: removes the periodic part of a record (f0 given or estimated, K harmonics, window in cycles) and returns the residual `shapeNoise` takes; K and the window are yours to choose | Base MATLAB |
+| `harmonicContent` | Diagnostic: how many harmonics of f0 stand above the noise between them (content rule); a count to look at, not a selector of record | Base MATLAB |
+| `shapeNoiseWrapper`, `cetNoiseWrapper` | One call from a record to a surrogate (optional harmonic template, then `shapeNoise`); `cetNoiseWrapper` is the worked example on the monthly Central England Temperature series, not hand movement | Base MATLAB |
 | `estimateWhittleAlpha` | Spectral exponent over a band by prewhitened local Whittle; the one to use at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA (Wen & Liu 2016): spectral exponent and noise magnitude of the scale-free part, with oscillatory peaks removed | Signal Processing Toolbox; optional FieldTrip cross-check |
 | `checkSpectralKnee` | Lorentzian knee against a fixed power law (Preston, Smith & Voytek 2026) | Signal Processing Toolbox |
@@ -121,6 +123,8 @@ Tests cover known-alpha recovery, peak removal, surrogate fidelity at steep alph
 `validation/` holds the scripts behind the accuracy statements above: exact reference series (k-fold integrated Davies-Harte fGn, alpha up to 7, analytic spectra) and an estimator calibration in MATLAB, Python and R. Large run outputs are not in git.
 
 ## Credits
+
+The bundled example series is the Hadley Centre Central England Temperature (HadCET) dataset. Contains public sector information licensed under the Open Government Licence v3.0. Source: Met Office Hadley Centre, www.metoffice.gov.uk/hadobs. Cite Parker, Legg & Folland (1992), Int. J. Climatol. 12, 317-342.
 
 - `noiseXu`: Xu, C. (2019). An easy algorithm to generate colored noise sequences. *The Astronomical Journal*, 157(3), 127.
 - `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range dependence. *Annals of Statistics*, 23(5), 1630-1661; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92, 042925.
