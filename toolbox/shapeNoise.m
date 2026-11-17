@@ -50,7 +50,8 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % SYNTAX:
 %   [n, info] = shapeNoise(resid, fs, [])          % target alpha = segment's own (recommended)
 %   [n, info] = shapeNoise(resid, fs, alpha)       % explicit target, scalar or 1-by-C
-%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, MinLength=32, AlphaBand=[1 20])
+%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, MinLength=32, AlphaBand=[1 20])   % band in the units of fs; "kinematic" = [1, min(20, fs/2 - 1)] Hz
+%   [n, info] = shapeNoise(___, CheckUncovered=false)                      % allow exact zeros at the ends (counts, rainfall)
 %   [n, info] = shapeNoise(___, SegmentRule="budget", SegmentBudget=0.01)   % wrap adds <= 1% derivative energy
 %   [n, info] = shapeNoise(___, SegmentRule="tol", FairShareTol=1)          % wrap <= Tol x mean terms
 %   n = shapeNoise(resid, fs, alpha, Method="legacy")                      % 1.x construction; warns
@@ -59,7 +60,8 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % INPUTS:
 %   resid - Residual, real N-by-C matrix (one column per channel, e.g. the
 %           two axes of a movement) or a vector. "legacy" takes a vector.
-%   fs    - Sampling rate in Hz.
+%   fs    - Sampling rate in cycles per unit of time: Hz for movement, per year for monthly data (fs = 12), per day for
+%           daily data. Every frequency argument (AlphaBand) is in the same unit.
 %   alpha - Target exponent for alpha selection: [] (default use: each
 %           channel's segment alpha by estimateWhittleAlpha over AlphaBand),
 %           a scalar, or 1-by-C. Under "legacy" the carrier's alpha.
@@ -81,8 +83,13 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   FairShareTol - Tolerance for "tol" (1).
 %   MinLength    - Shortest segment searched (32 samples). No segment at
 %                  or above it is an error ("shapeNoise:noSegment").
-%   AlphaBand    - Band in Hz for estimateWhittleAlpha
-%                  ([1, min(20, fs/2 - 1)]).
+%   AlphaBand    - [fLow fHigh] for estimateWhittleAlpha, in the units of fs (0 < fLow < fHigh < fs/2), or "kinematic"
+%                  ([1, min(20, fs/2 - 1)] Hz, the band validated on hand-movement residuals). NOT GIVEN: the kinematic
+%                  band is used with the warning "shapeNoise:defaultAlphaBand", because it assumes Hz-scale movement
+%                  data; for any other data pass the band you mean. An invalid band is an error ("shapeNoise:alphaBand").
+%   CheckUncovered - true (default): exact-zero stretches of 3 or more samples at either end are an error
+%                  (an uncovered template stretch, "shapeNoise:zeroTail"). false: skip the check, for data with
+%                  legitimate zeros (counts, rainfall); you then own the check that no template tail is left at zero.
 %   PhaseSource  - "legacy" only: "xu" (default), "white", "pinknoise",
 %                  "dsp" or a function handle @(M, fs, alpha).
 %
@@ -95,6 +102,18 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %          alphaTarget, nDraw, accepted, dAlpha, nEstFail (draws whose alpha
 %          estimate errored, counted as rejected and warned about as
 %          "shapeNoise:estimateFailed"; 1-by-C). "legacy": Method only.
+%
+% NOTES ON SCOPE (read before using it outside movement data):
+%   VALIDATED RANGE. The defaults (AlphaTol 0.3, MaxDraw 20, MinLength 32, the detect rule) were set and checked on
+%     template-subtracted movement residuals and noiseXu references at alpha 3-6, N 1000-3000, fs 133-240 Hz. Shallower
+%     exponents (alpha 0-2), long records (N of 10^4 or more) and non-Hz units are not validated; check the surrogate
+%     against your data (info.dAlpha, info.Lfrac, a spectrum plot) before relying on it.
+%   CHANNELS. Each channel gets its own independent random phases, so the surrogate keeps each channel's amplitude spectrum and
+%     length L but NOT any coherence or correlation between channels. That is intended for the x and y noise of a movement; it is
+%     not a multivariate surrogate.
+%   COST. The segment search tries lengths from N downwards and stops at the first length that works, with vector work of size
+%     N - L + 1 per length: fast when the full record nearly matches, up to O(N^2) when only short segments match (steep alpha,
+%     large N). Long, steep records can be slow.
 %
 % LEGACY ("legacy", the 1.x behaviour, bit for bit):
 %   F = |FFT(resid)| .* exp(1i*angle(FFT(carrier))), n = real(ifft(F))
@@ -123,7 +142,8 @@ arguments
     options.SegmentBudget double = []
     options.FairShareTol (1, 1) double {mustBePositive} = 1
     options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 32
-    options.AlphaBand (1, 2) double = [NaN NaN]
+    options.AlphaBand = [NaN NaN]
+    options.CheckUncovered (1, 1) logical = true
     options.PhaseSource = ""
 end
 
@@ -149,9 +169,8 @@ end
 if isvector(resid), resid = resid(:); end
 [N, C] = size(resid);
 if any(~isfinite(resid), "all"), error("shapeNoise:nonFinite", "resid contains NaN or Inf."); end
-band = options.AlphaBand;
-if any(isnan(band)), band = [1, min(20, fs/2 - 1)]; end
-checkZeroTail(resid);
+band = resolveAlphaBand(options.AlphaBand, fs);
+if options.CheckUncovered, checkZeroTail(resid); end
 if any(std(resid, 0, 1) == 0), error("shapeNoise:constant", "a channel of resid is constant."); end
 
 if options.SegmentRule == "budget" && ~(isscalar(options.SegmentBudget) && options.SegmentBudget > 0 && options.SegmentBudget < 1)
@@ -197,6 +216,32 @@ if any(nEstFail > 0)
     warning("shapeNoise:estimateFailed", ...
         "estimateWhittleAlpha failed on %d draw(s) (counted as rejected; info.nEstFail). Last message: %s", ...
         sum(nEstFail), estMsg);
+end
+end
+
+function band = resolveAlphaBand(ab, fs)
+% AlphaBand: [fLow fHigh] in the units of fs, or "kinematic" (= [1, min(20, fs/2 - 1)] Hz, the band validated on hand movement),
+% or not supplied: the kinematic band WITH A WARNING, because it assumes Hz-scale movement data.
+kin = @() [1, min(20, fs/2 - 1)];
+if isstring(ab) || ischar(ab)
+    if string(ab) ~= "kinematic"
+        error("shapeNoise:alphaBand", "AlphaBand must be a [fLow fHigh] pair or ""kinematic"", got ""%s"".", string(ab));
+    end
+    band = kin();
+elseif isnumeric(ab) && numel(ab) == 2 && all(isnan(ab))
+    band = kin();
+    warning("shapeNoise:defaultAlphaBand", ...
+        "AlphaBand not given: using the kinematic default [%g %g] (the band validated on hand-movement residuals, fs in Hz). " + ...
+        "For other data pass AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand=""kinematic"" to silence this warning.", band(1), band(2));
+elseif isnumeric(ab) && numel(ab) == 2 && all(isfinite(ab)) && ab(1) > 0 && ab(2) > ab(1)
+    band = double(ab(:)');
+else
+    error("shapeNoise:alphaBand", "AlphaBand must be [fLow fHigh] with 0 < fLow < fHigh, or ""kinematic"".");
+end
+if band(2) >= fs/2 || band(2) <= band(1)
+    error("shapeNoise:alphaBand", ...
+        "The alpha band [%g %g] is invalid for fs = %g (needs fLow < fHigh < fs/2). The kinematic default assumes fs of several tens of Hz; pass AlphaBand for other data.", ...
+        band(1), band(2), fs);
 end
 end
 

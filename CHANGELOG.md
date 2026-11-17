@@ -10,6 +10,20 @@ that history is not lost, just relocated to prose rather than the filename.
 
 ## v2.0.0 -- unreleased (branch v2.0.0)
 
+### Generality: `shapeNoise` for data that are not hand movement, and `harmonicTemplate`
+
+An API audit (2026-11-17) found the defaults tied to the first use case (hand-movement residuals, Hz).
+
+- `shapeNoise` `AlphaBand`: no longer a silent `[1 20]` Hz. Not giving it uses the kinematic band `[1, min(20, fs/2 - 1)]` and warns
+  (`shapeNoise:defaultAlphaBand`); `AlphaBand="kinematic"` selects the same band silently; any other band is `[fLow fHigh]` in the units of `fs`
+  and must satisfy `0 < fLow < fHigh < fs/2` (`shapeNoise:alphaBand`). `fs` may be in any consistent unit of cycles per unit time (monthly data: `fs = 12`).
+- `shapeNoise` `CheckUncovered` (default `true`): `false` switches off the zero-tail error (`shapeNoise:zeroTail`) for records where long exact-zero stretches are genuine.
+- New `harmonicTemplate(x, fs, f0, K)`: the windowed harmonic-regression template (constant, trend and K harmonics of f0 in Hann-weighted windows of `Window` cycles,
+  overlap-add, end-anchored final window) whose residual `shapeNoise` takes. f0 is given or estimated within `F0Band`. A record shorter than one window is an error
+  (`harmonicTemplate:tooShort`), not a zero residual. It is a template, not a selector: K and Window are the caller's decision; selection rules and diagnostics are planned for v2.1.0.
+- Help text: validated range (alpha 3-6, N 1000-3000, fs 133-240 Hz), independent channel phases, and a search cost that can reach O(N^2).
+- Tests: `testHarmonicTemplate` (10, including parity with the project runner's template for two axes) and `testShapeNoiseGenericity` (5).
+
 ### Breaking: `estimateIRASA` now performs IRASA
 
 **Bug.** Up to v1.2.0 the resampled copies were labelled with their true

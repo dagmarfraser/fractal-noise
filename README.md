@@ -26,6 +26,7 @@ x = noiseXu(3000, 4.5, 1.0, 240);                  % alpha 4.5, unit SD, 240 Hz
 [a, k] = estimateWhittleAlpha(x, 240, 1, 20)       % exponent over 1-20 Hz, and the differencing order used
 aI = estimateIRASA(x, 240, 1, 20, Prewhiten=k);    % IRASA on the same band, safe at steep alpha
 [s, info] = shapeNoise(myResidual, 240, []);      % surrogate of a measured residual (length info.L)
+[res, ~, ti] = harmonicTemplate(myPosition, 240, 1.2, 1);   % strip the periodic part (f0 1.2 Hz, K = 1), then shapeNoise(res, 240, [], AlphaBand="kinematic")
 r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 ```
 
@@ -35,6 +36,7 @@ r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 |---|---|---|
 | `noiseXu` | Generates 1/f^alpha noise by fractional differencing (Xu 2019), alpha from -2 to 7 | Base MATLAB |
 | `shapeNoise` | Surrogate of a measured signal: random phases on the amplitude spectrum of its longest end-matched segment, kept only if its exponent matches | Base MATLAB (`Method="legacy"` carriers `"pinknoise"`/`"dsp"` need Signal Processing / DSP System Toolbox) |
+| `harmonicTemplate` | Windowed harmonic-regression template: removes the periodic part of a record (f0 given or estimated, K harmonics, window in cycles) and returns the residual `shapeNoise` takes; K and the window are yours to choose | Base MATLAB |
 | `estimateWhittleAlpha` | Spectral exponent over a band by prewhitened local Whittle; the one to use at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA (Wen & Liu 2016): spectral exponent and noise magnitude of the scale-free part, with oscillatory peaks removed | Signal Processing Toolbox; optional FieldTrip cross-check |
 | `checkSpectralKnee` | Lorentzian knee against a fixed power law (Preston, Smith & Voytek 2026) | Signal Processing Toolbox |
