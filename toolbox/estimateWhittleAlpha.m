@@ -41,13 +41,18 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 %
 % SAMPLING ERROR: for an untapered local Whittle estimate from m frequencies near zero, the estimate of H has asymptotic variance
 %   1/(4m) (Robinson 1995, Theorem 2), so SD(alpha) = 1/sqrt(m), because alpha = 2H - 1. Tapering inflates the variance (Hurvich & Chen 2000
-%   obtain 1.5/(4m) for their own complex-valued taper). This estimator uses a Hann taper on a band that does not start at the lowest
-%   frequency, so neither value applies directly. Measured on exact references (fs 120-300 Hz, N 1000 and 3000, band 1-20 Hz), the SD is about
-%   twice 1/sqrt(m); see validation/reportToleranceTable_v002.py.
+%   obtain 1.5/(4m) for their own complex-valued taper). For a full cosine-bell (Hann) taper on the undifferenced series, using all Fourier
+%   frequencies from the second upward, Velasco (1999, p. 101, remark after Theorem 6 and Equation 10) gives a variance factor of 35/18 (1.94),
+%   that is (35/18)/(4m), for d < 3/2 and no drift. That remark does not cover this estimator: here the taper follows k differences and the
+%   periodogram is recoloured, k comes from the data, and the band is fixed in Hz and starts above the lowest frequencies. Measured on exact
+%   references (fs 120-300 Hz, N 1000 and 3000, band 1-20 Hz), the variance of alpha is 1.92 times 1/sum(nu.^2), nu = log(lambda) - mean(log(lambda))
+%   (median of 32 conditions, range 1.73 to 2.07), and the SD is about twice 1/sqrt(m). The factor agrees with 35/18, but it is a measurement,
+%   not a result of Velasco's theorem; see validation/reportToleranceTable_v003.py.
 %
 % Requires base MATLAB only. References: Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory
 % time series. Journal of Time Series Analysis, 21(2), 155-180. Robinson, P. M. (1995). Gaussian semiparametric estimation of long range
-% dependence. Annals of Statistics, 23(5), 1630-1661. Kiyono, K. (2015). Establishing a direct connection between
+% dependence. Annals of Statistics, 23(5), 1630-1661. Velasco, C. (1999). Gaussian semiparametric estimation of non-stationary time series.
+% Journal of Time Series Analysis, 20(1), 87-127. Kiyono, K. (2015). Establishing a direct connection between
 % detrended fluctuation analysis and Fourier analysis. Physical Review E, 92, 042925.
 
 arguments

@@ -80,7 +80,7 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %           a scalar, or 1-by-C. Under "legacy" the carrier's alpha.
 %   Method       - "endMatched" (default) or "legacy".
 %   AlphaTol     - Accept a draw when |alpha(draw) - target| <= AlphaTol (0.3). On exact references 0.3 is about 2 standard
-%                  deviations of estimateWhittleAlpha over 1-20 Hz (1.1 to 3.5 across fs 120-300 Hz and N 1000-3000; sampling error and sources in its help). If draws
+%                  deviations of estimateWhittleAlpha over 1-20 Hz (1.1 to 3.5 across fs 120-300 Hz and N 1000-3000). That standard deviation is measured; its size agrees with the Hann-taper variance factor of Velasco (1999), within the limits given in the estimateWhittleAlpha help. If draws
 %                  centre on the target, 20 draws then accept at least 99% of channels for any standard deviation up to 1.1, so
 %                  repeated failure points to surrogates centred away from the target. Across many calls, see summariseShapeNoiseBatch.
 %   MaxDraw      - Draws per channel before giving up (20). A channel with
