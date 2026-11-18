@@ -24,19 +24,28 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function testExactLowerTailProbabilities(testCase)
+        function testExactLowerTailProbabilitiesAgainstMargin(testCase)
             testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("shapeNoise:lowAcceptance"));
-            known = [42 39 0.00858385379973348; 42 40 0.066182322212583; 50 46 0.00159617309073287; 50 47 0.0138172708306004; ...
-                100 95 0.00343232158775452; 100 96 0.0183740364446497; 200 192 0.00101255715052078];
+            known = [50 43 0.0117864477972643; 50 44 0.0377761729897773; 90 79 0.00529294034894413; 90 80 0.0145193663115969; ...
+                100 88 0.00427418246636591; 100 89 0.0114724100674847; 200 181 0.00582355796779067; 200 182 0.0120894437308896];
             for r = 1:size(known, 1)
-                S = summariseShapeNoiseBatch(testCase.batch(known(r, 1), known(r, 2)));
+                S = summariseShapeNoiseBatch(testCase.batch(known(r, 1), known(r, 2)), MinChannels=1);
                 testCase.verifyEqual(S.pValue, known(r, 3), "RelTol", 1e-10);
             end
         end
 
+        function testExactLowerTailProbabilitiesAgainstStandard(testCase)
+            testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("shapeNoise:lowAcceptance"));
+            known = [90 79 2.01380145870288e-09; 100 88 4.65406239051271e-10; 100 90 7.63158753226062e-08; 50 44 1.08968320265582e-05];
+            for r = 1:size(known, 1)
+                S = summariseShapeNoiseBatch(testCase.batch(known(r, 1), known(r, 2)));
+                testCase.verifyEqual(S.pValueStandard, known(r, 3), "RelTol", 1e-10);
+            end
+        end
+
         function testCriticalCountsAtDefaults(testCase)
-            % largest accepted count that warns, from the exact binomial, Standard 0.99, Level 0.01
-            critical = [42 39; 50 46; 100 95; 200 193];
+            % largest accepted count that warns, from the exact binomial, Margin 0.95, Level 0.01
+            critical = [90 79; 100 88; 200 181; 500 462];
             for r = 1:size(critical, 1)
                 n = critical(r, 1);  c = critical(r, 2);
                 S = testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(n, c)), "shapeNoise:lowAcceptance");
@@ -46,36 +55,47 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
             end
         end
 
-        function testDefaultsAreTheDesignStandard(testCase)
-            S = summariseShapeNoiseBatch(testCase.batch(50, 50));
-            testCase.verifyEqual([S.Standard, S.Level, S.MinChannels], [0.99, 0.01, 42]);
+        function testDefaults(testCase)
+            S = summariseShapeNoiseBatch(testCase.batch(100, 100));
+            testCase.verifyEqual([S.Margin, S.Standard, S.Level, S.MinChannels], [0.95, 0.99, 0.01, 90]);
         end
 
         function testPValueRisesWithAcceptance(testCase)
             testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("shapeNoise:lowAcceptance"));
-            p = arrayfun(@(x) summariseShapeNoiseBatch(testCase.batch(100, x)).pValue, 80:100);
+            p = arrayfun(@(x) summariseShapeNoiseBatch(testCase.batch(100, x)).pValue, 70:100);
             testCase.verifyGreaterThan(diff(p), 0);
             testCase.verifyEqual(p(end), 1, "AbsTol", 1e-12);
         end
 
-        function testSilentAtOrAboveStandard(testCase)
-            for x = [99 100]
+        function testSilentAtOrAboveMargin(testCase)
+            for x = [95 100]
                 S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, x)));
                 testCase.verifyEqual(S.decision, "ok");
                 testCase.verifyEqual(S.acceptance, x / 100);
             end
         end
 
+        function testBelowStandardIsReportedButNeverWarns(testCase)
+            % 97% of 1000: well above the margin, significantly below the 99% design standard
+            S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(1000, 970)));
+            testCase.verifyEqual(S.decision, "ok");
+            testCase.verifyTrue(S.belowStandard);
+            testCase.verifyLessThan(S.pValueStandard, 0.01);
+            S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(1000, 995)));
+            testCase.verifyFalse(S.belowStandard);
+        end
+
         function testBelowMinimumReportsWithoutTesting(testCase)
-            S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(41, 0)));
+            S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(89, 0)));
             testCase.verifyEqual(S.decision, "tooFew");
             testCase.verifyTrue(isnan(S.pValue));
             testCase.verifyEqual(S.acceptance, 0);
-            testCase.verifyEqual(S.nChannels, 41);
+            testCase.verifyEqual(S.nChannels, 89);
+            testCase.verifyTrue(S.belowStandard);
         end
 
         function testMinimumIsInclusive(testCase)
-            S = testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(42, 0)), "shapeNoise:lowAcceptance");
+            S = testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(90, 0)), "shapeNoise:lowAcceptance");
             testCase.verifyEqual(S.decision, "low");
         end
 
@@ -86,14 +106,20 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
         end
 
         function testLevelOption(testCase)
-            testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, 96)));                       % p = 0.0184
-            testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(100, 96), Level=0.05), "shapeNoise:lowAcceptance");
+            testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, 90)));                       % p = 0.0282
+            testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(100, 90), Level=0.05), "shapeNoise:lowAcceptance");
         end
 
-        function testStandardOption(testCase)
-            % Standard 0.95, n 100: the largest accepted count that warns is 88
-            testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(100, 88), Standard=0.95), "shapeNoise:lowAcceptance");
-            testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, 89), Standard=0.95));
+        function testMarginOption(testCase)
+            % Margin 0.90, n 100: the largest accepted count that warns is 81
+            testCase.verifyWarning(@() summariseShapeNoiseBatch(testCase.batch(100, 81), Margin=0.90), "shapeNoise:lowAcceptance");
+            testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, 82), Margin=0.90));
+        end
+
+        function testStandardOptionChangesOnlyTheReport(testCase)
+            S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(testCase.batch(100, 90), Standard=0.95));
+            testCase.verifyEqual(S.pValueStandard, 0.0281882941634161, "RelTol", 1e-10);
+            testCase.verifyEqual(S.decision, "ok");
         end
 
         function testTriesKnownAnswers(testCase)
@@ -142,6 +168,8 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
 
         function testBadOptionsError(testCase)
             infos = testCase.batch(50, 50);
+            testCase.verifyError(@() summariseShapeNoiseBatch(infos, Margin=1), ?MException);
+            testCase.verifyError(@() summariseShapeNoiseBatch(infos, Margin=0), ?MException);
             testCase.verifyError(@() summariseShapeNoiseBatch(infos, Standard=1), ?MException);
             testCase.verifyError(@() summariseShapeNoiseBatch(infos, Standard=0), ?MException);
             testCase.verifyError(@() summariseShapeNoiseBatch(infos, Level=0), ?MException);
@@ -158,10 +186,10 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
 
         function testWarningSaysWhatItMeansAndWhatToDo(testCase)
             testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture("shapeNoise:lowAcceptance"));
-            lastwarn("");  summariseShapeNoiseBatch(testCase.batch(50, 40));
+            lastwarn("");  summariseShapeNoiseBatch(testCase.batch(100, 40));
             [msg, id] = lastwarn;
             testCase.verifyEqual(string(id), "shapeNoise:lowAcceptance");
-            for phrase = ["40 of 50", "not a clean power law", "AlphaTol", "MaxDraw", "Inspect the residual"]
+            for phrase = ["40 of 100", "95.0% margin", "not a clean power law", "AlphaTol", "MaxDraw", "Inspect the residual"]
                 testCase.verifySubstring(string(msg), phrase);
             end
         end
@@ -174,20 +202,20 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
 
         function testSilentOnRandomWalks(testCase)
             testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture(["shapeNoise:noAcceptedDraw", "shapeNoise:estimateFailed"]));
-            rng(20261118, "twister");  infos = cell(60, 1);
-            for k = 1:60
+            rng(20261118, "twister");  infos = cell(100, 1);
+            for k = 1:100
                 [~, infos{k}] = shapeNoise(cumsum(randn(1000, 1)), 133, [], AlphaBand=[1 20]);
             end
             S = testCase.verifyWarningFree(@() summariseShapeNoiseBatch(infos));
             testCase.verifyEqual(S.decision, "ok");
-            testCase.verifyGreaterThanOrEqual(S.acceptance, 0.99);
+            testCase.verifyGreaterThanOrEqual(S.acceptance, 0.95);
         end
 
         function testWarnsOnBatchWithUnreachableTargets(testCase)
             % A fifth of the channels are asked for an exponent their amplitude spectrum cannot give
             testCase.applyFixture(matlab.unittest.fixtures.SuppressedWarningsFixture(["shapeNoise:noAcceptedDraw", "shapeNoise:estimateFailed"]));
-            rng(20261119, "twister");  infos = cell(60, 1);
-            for k = 1:60
+            rng(20261119, "twister");  infos = cell(100, 1);
+            for k = 1:100
                 x = cumsum(randn(1000, 1));
                 if mod(k, 5) == 0, [~, infos{k}] = shapeNoise(x, 133, 6.5, AlphaBand=[1 20], MaxDraw=5);
                 else, [~, infos{k}] = shapeNoise(x, 133, [], AlphaBand=[1 20]);
@@ -195,7 +223,7 @@ classdef testSummariseShapeNoiseBatch < matlab.unittest.TestCase
             end
             S = testCase.verifyWarning(@() summariseShapeNoiseBatch(infos), "shapeNoise:lowAcceptance");
             testCase.verifyEqual(S.decision, "low");
-            testCase.verifyLessThanOrEqual(S.nAccepted, 48);   % the 12 unreachable channels can never be accepted; an ordinary channel may also miss
+            testCase.verifyLessThanOrEqual(S.nAccepted, 80);   % the 20 unreachable channels can never be accepted; an ordinary channel may also miss
         end
 
         function testNoAcceptedDrawMessageNamesTheLimits(testCase)

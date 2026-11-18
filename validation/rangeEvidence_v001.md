@@ -11,7 +11,7 @@ Every number in the RANGE section of `toolbox/shapeNoise.m`, in `CHANGELOG.md` a
 | High alpha | `checkShapeNoiseEndMatched_v003.m` (8bf0e9036ee39fa77ad5475e69ad0ad4), runner `runCheckShapeNoiseEndMatched_v003.m` (651fc8066bffd45f5f80e3a057455bf5) | Exact references; nominal alpha 2.95 to 6.75; same fs, N and band; 200 series per cell; master seed 3 | `out_highAlpha_v003/cells.csv` (9dd08e83060dded4d17d957d4458b7f5) |
 | Layers | `checkShapeNoiseLayers_v004.m` (a9fb73312b4424874946514a0697b4af), `exactRefExtended_v004.m` (764b4fda3e3d3e748b2e8796a94c881b), `classifyShapeNoise_v004.m` (ad5de7b5e30173a410bca17c30b56fad), runner `runCheckShapeNoise_v004.m` (2a5743c91c244aa01655f82c10ca3209) | Exact, noiseXu Phi 0.99 and Phi 1; nominal alpha -4 to 10; same fs, N and band; 100 series per cell; master seed 2 | `out_v004/layers_cells.csv` (d8168bce6f7974a24d5316528e35c9f5) |
 | Real residuals | `runCheckShapeNoiseRealResiduals_v001.m` (5d826baa5d8e9c1f501737bd99ff875c, kept outside this repository: it loads the project's private datasets; held for v2.1.0) | Nine movement datasets, stripping K = 1 and K = 4 harmonics, each axis alone and both axes together; band 1-20 Hz | `out_realResiduals_v001/axes.csv` (91644b32aaa6e094479a0d7b441df080) |
-| Tables | `reportRangeEvidence_v001.py` (7e4275f145e589fb1780fbf75ddc8f25) | Reads the four outputs above | `out_rangeEvidence_v001/report_tables.txt` (90da33ae8a0a9dd647f780a117bf3e0f) |
+| Tables | `reportRangeEvidence_v001.py` (dde84647f8280687631fe296f9238a5e) | Reads the four outputs above | `out_rangeEvidence_v001/report_tables.txt` (339422731cfc47b4e7e7b6a480ecda0a) |
 
 ## Exact references: share of series that fail (error or no accepted draw)
 
@@ -45,5 +45,7 @@ No exact series exists at odd-integer alpha (H would be 0 or 1), so those values
 | estimateWhittleAlpha on exact references | Worst absolute bias 0.079 against the in-band slope for alpha -1.5 to 9.5, at most 1.0% of series with an estimator error; 44.6% errors at alpha -2, 32.8% at alpha 10, at least 99.9% at alpha -2.5 and below (AlphaBounds [-2 10]) | Layers run |
 
 ## The batch warning on real data
+
+`summariseShapeNoiseBatch` warns only when acceptance is significantly below a 95% margin (exact one-sided binomial, level 0.01, at least 90 channels). The 95% is a conventional margin chosen after the real-data acceptance results were seen; it is not an independent derivation. The minimum of 90 channels is the smallest batch from which the test keeps at least 80% power to detect a true acceptance of 85% (exact binomial, checked for batches up to 419 channels). The 99% design standard comes from exact references and is reported for information only.
 
 Per-dataset acceptance on the real datasets is held for the BRM paper and v2.1.0 (2026-11-21) and kept outside this repository.

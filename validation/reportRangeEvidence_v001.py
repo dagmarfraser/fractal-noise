@@ -75,9 +75,10 @@ def lowerTail(x, n, q=0.99):
 rows = []
 for (ds, K), q in R.groupby(['dataset', 'K']):
     n, x = len(q), int((q.cls == 'ok').sum())
-    p = lowerTail(x, n)
-    rows.append({'dataset': ds, 'K': K, 'channels': n, 'accepted': x, 'acceptedPct': 100 * x / n, 'pAgainst99': p, 'wouldWarn': (n >= 42) and (p < 0.01)})
-show('What the batch rule would do on each real dataset (standard 0.99, level 0.01, at least 42 channels; each axis alone)', pd.DataFrame(rows).set_index(['K', 'dataset']).sort_index().round({'acceptedPct': 2}))
+    p95 = lowerTail(x, n, 0.95)
+    p99 = lowerTail(x, n, 0.99)
+    rows.append({'dataset': ds, 'K': K, 'channels': n, 'accepted': x, 'acceptedPct': 100 * x / n, 'pAgainst95': p95, 'wouldWarn': (n >= 90) and (p95 < 0.01), 'tested': n >= 90, 'pAgainst99': p99, 'belowStandard99': p99 < 0.01})
+show('What the batch rule would do on each real dataset (warning: margin 0.95, level 0.01, at least 90 channels; 0.99 reported for information; each axis alone)', pd.DataFrame(rows).set_index(['K', 'dataset']).sort_index().round({'acceptedPct': 2}))
 R['L'] = R.Lfrac * R.N
 rows = []
 for K, q in R[R.L.notna()].groupby('K'):
