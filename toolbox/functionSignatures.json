@@ -1,6 +1,21 @@
 {
     "_schemaVersion": "1.0.0",
 
+    "summariseShapeNoiseBatch":
+    {
+        "inputs":
+        [
+            {"name":"infos", "kind":"required", "type":[["cell"], ["struct"]]},
+            {"name":"Standard", "kind":"namevalue", "type":["numeric", "scalar", ">0", "<1"]},
+            {"name":"Level", "kind":"namevalue", "type":["numeric", "scalar", ">0", "<1"]},
+            {"name":"MinChannels", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]}
+        ],
+        "outputs":
+        [
+            {"name":"S", "type":["struct", "scalar"]}
+        ]
+    },
+
     "noiseXu":
     {
         "inputs":

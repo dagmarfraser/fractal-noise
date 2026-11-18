@@ -66,7 +66,10 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %           channel's segment alpha by estimateWhittleAlpha over AlphaBand),
 %           a scalar, or 1-by-C. Under "legacy" the carrier's alpha.
 %   Method       - "endMatched" (default) or "legacy".
-%   AlphaTol     - Accept a draw when |alpha(draw) - target| <= AlphaTol (0.3).
+%   AlphaTol     - Accept a draw when |alpha(draw) - target| <= AlphaTol (0.3). On exact references 0.3 is about 2 standard
+%                  deviations of estimateWhittleAlpha over 1-20 Hz (1.1 to 3.5 across fs 120-300 Hz and N 1000-3000). If draws
+%                  centre on the target, 20 draws then accept at least 99% of channels for any standard deviation up to 1.1, so
+%                  repeated failure points to surrogates centred away from the target. Across many calls, see summariseShapeNoiseBatch.
 %   MaxDraw      - Draws per channel before giving up (20). A channel with
 %                  no accepted draw is returned as NaN, with a warning
 %                  ("shapeNoise:noAcceptedDraw") and info.accepted false.
@@ -122,7 +125,7 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   shallow. Kept only to reproduce earlier results; warns on every call
 %   ("shapeNoise:legacyConstruction").
 %
-% See also: estimateWhittleAlpha, noiseXu, estimateIRASA
+% See also: estimateWhittleAlpha, noiseXu, estimateIRASA, summariseShapeNoiseBatch
 %
 % Toolbox: fractalnoise
 % Extracted from: PowerLawSimulationPreReg src/endToEndSegment_v006.m
@@ -207,7 +210,7 @@ for ch = 1:C
 end
 if ~all(accepted)
     warning("shapeNoise:noAcceptedDraw", ...
-        "No draw within AlphaTol %.2f of the target in %d tries for channel(s) %s; returned as NaN.", ...
+        "No draw within AlphaTol = %.2f of the target in MaxDraw = %d tries for channel(s) %s; returned as NaN.", ...
         options.AlphaTol, options.MaxDraw, mat2str(find(~accepted)));
 end
 info = struct("Method", "endMatched", "SegmentRule", seg.rule, "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, ...

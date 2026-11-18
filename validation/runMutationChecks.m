@@ -23,7 +23,7 @@ end
 here = fileparts(mfilename("fullpath"));  root = fileparts(here);
 M = mutants();
 if options.Only ~= "", M = M(contains([M.file], options.Only)); end
-tests = ["testHarmonicTemplate" "testShapeNoiseGenericity" "testWrappers" "testHarmonicContent" "testShapeNoise"];
+tests = ["testHarmonicTemplate" "testShapeNoiseGenericity" "testWrappers" "testHarmonicContent" "testShapeNoise" "testSummariseShapeNoiseBatch"];
 
 oldPath = path;  cleanupPath = onCleanup(@() path(oldPath));  %#ok<NASGU>
 oldWarn = warning("on", "all");  cleanupWarn = onCleanup(@() warning(oldWarn));  %#ok<NASGU>   % warnings must be ON: several tests verify them
@@ -75,6 +75,7 @@ mk = @(id, file, tests, change, from, to) struct("id", id, "file", file, "tests"
 HT = ["testHarmonicTemplate" "testWrappers"];
 SN = ["testShapeNoise" "testShapeNoiseGenericity" "testWrappers"];
 HC = "testHarmonicContent";
+SB = "testSummariseShapeNoiseBatch";
 M = [
  mk("T1", "harmonicTemplate", HT, "drop the Hann weights", "han = 0.5 * (1 - cos(2 * pi * (0:win - 1)' / (win - 1)));", "han = ones(win, 1);")
  mk("T2", "harmonicTemplate", HT, "remove one harmonic from the design", "for h = 1:K, D = [D,", "for h = 1:max(K - 1, 0), D = [D,")
@@ -97,5 +98,21 @@ M = [
  mk("W1", "cetNoiseWrapper", "testWrappers", "no LastYear guard", "if lastYear > lastComplete, error(", "if false, error(")
  mk("W2", "cetNoiseWrapper", "testWrappers", "missing months not detected", "if any(R(:, 2:13) <= -99, ""all""), error(", "if false, error(")
  mk("W3", "shapeNoiseWrapper", "testWrappers", "template step never runs", "useTemplate = ~isempty(options.F0) || all(~isnan(options.F0Band));", "useTemplate = false;")
+ mk("S7", "shapeNoise", SB, "no-draw warning no longer names MaxDraw", "of the target in MaxDraw = %d tries", "of the target in %d tries")
+ mk("B1", "summariseShapeNoiseBatch", SB, "flipped inequality in the test", "isLow = pValue < options.Level;", "isLow = pValue > options.Level;")
+ mk("B2", "summariseShapeNoiseBatch", SB, "minimum number of channels exclusive", "tested = nChannels >= options.MinChannels;", "tested = nChannels > options.MinChannels;")
+ mk("B3", "summariseShapeNoiseBatch", SB, "wrong default minimum (30)", "mustBePositive} = 42", "mustBePositive} = 30")
+ mk("B4", "summariseShapeNoiseBatch", SB, "wrong default level (0.05)", "mustBeLessThan(options.Level, 1)} = 0.01", "mustBeLessThan(options.Level, 1)} = 0.05")
+ mk("B5", "summariseShapeNoiseBatch", SB, "wrong default standard (0.95)", "mustBeLessThan(options.Standard, 1)} = 0.99", "mustBeLessThan(options.Standard, 1)} = 0.95")
+ mk("B6", "summariseShapeNoiseBatch", SB, "lower tail stops one count short", "i = (0:x)';", "i = (0:max(x - 1, 0))';")
+ mk("B7", "summariseShapeNoiseBatch", SB, "tries percentile is the median", "sorted(ceil(0.9 * nChannels))", "sorted(ceil(0.5 * nChannels))")
+ mk("B8", "summariseShapeNoiseBatch", SB, "only the first channel of a call counts", "accepted = [accepted; a(:)];", "accepted = [accepted; a(1)];")
+ mk("B9", "summariseShapeNoiseBatch", SB, "wrong warning identifier", "warning(""shapeNoise:lowAcceptance"",", "warning(""shapeNoise:mutated"",")
+ mk("B10", "summariseShapeNoiseBatch", SB, "fractional tries accepted", "any(d ~= round(d))", "false")
+ mk("B11", "summariseShapeNoiseBatch", SB, "channel-count mismatch not detected", "if numel(a) ~= numel(d), error(", "if false, error(")
+ mk("B12", "summariseShapeNoiseBatch", SB, "empty batch not detected", "if nInfos == 0, error(", "if false, error(")
+ mk("B13", "summariseShapeNoiseBatch", SB, "untested batch reported as ok", "decision = ""tooFew"";", "decision = ""ok"";")
+ mk("B14", "summariseShapeNoiseBatch", SB, "wrong binomial term", "(n - i) * log1p(-q)", "(n - i) * log(q)")
+ mk("B15", "summariseShapeNoiseBatch", SB, "per-draw acceptance ignores the draws made", "nAccepted / sum(tries)", "nAccepted / nChannels")
  ];
 end
