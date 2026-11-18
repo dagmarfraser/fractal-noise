@@ -9,14 +9,13 @@ function [n, info] = cetNoiseWrapper(options)
 %   year), removes the annual cycle with harmonicTemplate (f0 = 1 per year), and builds the surrogate with shapeNoise
 %   over an explicit band. It shows the unit-agnostic path: nothing here is in Hz or tied to hand movement.
 %
-%   This is an EXAMPLE, outside the validated range of shapeNoise (alpha 3-6, N 1000-3000, fs 133-240 Hz): the
-%   series is about 4400 months, its residual exponent is far shallower than 3, and the search cost grows with N.
-%   Use FirstYear to keep N in the low thousands.
+%   This is an EXAMPLE, outside the known-truth checks in the shapeNoise help (RANGE: fs 120-300 Hz, N 1000 and 3000, band 1-20 Hz):
+%   the series is about 4400 months in cycles per year, and the search cost grows with N. Use FirstYear to keep N in the low thousands.
 %
 % INPUTS (all name-value):
 %   FirstYear - first calendar year (default 1659, the start of the series).
 %   LastYear  - last year (default [] = the last year with all twelve months present in the bundled file).
-%   K         - harmonics of the annual cycle removed (default 2).
+%   K         - number of harmonics of the annual cycle stripped (default 2).
 %   Window    - template window in years (cycles of f0; default 4).
 %   AlphaBand - [fLow fHigh] in cycles per year, 0 < fLow < fHigh < 6 (default [0.5 5]).
 %   File      - path to a HadCET monthly file in the Met Office format (e.g. a newer download of meantemp_monthly_totals.txt); default the bundled one.

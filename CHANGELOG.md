@@ -25,7 +25,8 @@ An API audit (2026-11-17) found the defaults tied to the first use case (hand-mo
 - New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
 - `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
 - Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.
-- Help text: validated range (alpha 3-6, N 1000-3000, fs 133-240 Hz), independent channel phases, and a search cost that can reach O(N^2).
+- Help text: the measured range of `shapeNoise` on exact references (see Range below and `validation/rangeEvidence_v001.md`), independent channel phases, and a search cost that can reach O(N^2).
+- New `summariseShapeNoiseBatch`: acceptance share, per-draw acceptance and tries across many `shapeNoise` calls. It warns (`shapeNoise:lowAcceptance`) only when acceptance is significantly below the 99% design standard set on exact references (exact one-sided binomial, level 0.01, at least 42 channels), and never errors. The `shapeNoise:noAcceptedDraw` warning now names `AlphaTol` and `MaxDraw`.
 - Tests: `testHarmonicTemplate` (10, including parity with the project runner's template for two axes) and `testShapeNoiseGenericity` (5).
 
 ### Breaking: `estimateIRASA` now performs IRASA
@@ -104,12 +105,18 @@ draws, first- and second-difference noise 1.00 of the segment's
 that column is a check of the code, not of the method). Median L/N 0.97
 at alpha 3, 0.72 at 5 and 0.53 at 6 (N 3000).
 
-**Range.** Steep, short records may have no end-matched segment, and
-the call then errors (`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha`
-when the segment is too short to estimate its exponent). At N 3000,
-fs 133: 6% of references at alpha 5.5 and 30% at 6, none below. At
-N 1000, fs 240: 1% at alpha 4, 16% at 4.5, 58% at 5, 79% at 5.5, 82% at
-6. These cases are errors, not quietly shortened or substituted.
+**Range.** Measured against known truth on exact references with no
+low-frequency break (fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20
+Hz; 200 series per cell; `validation/rangeEvidence_v001.md`). Share of
+series that fail: at most 1.1% for alpha -0.75 to 2.5 (3.5% in the worst
+configuration), 7% at 2.75, 24-48% from 2.95 to 4, 68-80% at 4.25 to 4.5,
+92% at 4.75 and 96-100% from 4.95 to 6.75. These are errors
+(`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha` when the segment is
+too short to estimate its exponent), not quietly shortened or substituted.
+Series with a low-frequency break or leak reach further: noiseXu with Phi
+0.99 is accepted in at least 98% of series up to an in-band slope of 4.5,
+and real movement residuals after stripping K = 1 harmonic in 97.0% of
+7948 axes (93.7% above alpha 5), with no `shapeNoise:noSegment`.
 
 **What changes for callers**
 

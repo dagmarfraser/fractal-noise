@@ -16,7 +16,7 @@ function [n, info] = shapeNoiseWrapper(x, fs, options)
 %   F0         - Name-value. Fundamental frequency, a scalar. Default [] (none).
 %   F0Band     - Name-value. [fLow fHigh]; estimate f0 from the record in this band (see harmonicTemplate).
 %                With neither F0 nor F0Band the template step is skipped and x is shaped as it is.
-%   K          - Name-value. Harmonics removed (default 1).
+%   K          - Name-value. Number of harmonics stripped (default 1).
 %   Window     - Name-value. Template window in cycles of f0 (default 4).
 %   Alpha      - Name-value. Target exponent per channel (default [] = that of the residual; see shapeNoise).
 %   AlphaBand  - Name-value. [fLow fHigh] for the exponent, or "kinematic" (default). See shapeNoise.
@@ -26,7 +26,7 @@ function [n, info] = shapeNoiseWrapper(x, fs, options)
 %   n    - The surrogate (info.shape.L samples per channel, see shapeNoise).
 %   info - Struct: template (harmonicTemplate info, or []), residual (what shapeNoise was given), shape (shapeNoise info).
 %
-% The validated range of shapeNoise (alpha 3-6, N 1000-3000, fs 133-240 Hz) applies; outside it this is exploratory.
+% The measured range in the shapeNoise help (RANGE) applies; outside it this is exploratory.
 %
 % See also: harmonicTemplate, shapeNoise, cetNoiseWrapper
 

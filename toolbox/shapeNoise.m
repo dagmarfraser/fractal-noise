@@ -34,13 +34,26 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   validation/checkShapeNoiseEndMatched_v001.m and
 %   validation/checkShapeNoiseMechanism_v001.m).
 %
-%   RANGE: steep, short records may have no end-matched segment. In
-%   noiseXu references (validation/checkShapeNoiseEndMatched_v001.m) the
-%   call errored ("shapeNoise:noSegment", or "shapeNoise:segmentAlpha"
-%   when the segment is too short to estimate) for N 3000 at fs 133 in 6%
-%   of references at alpha 5.5 and 30% at 6, none below; for N 1000 at
-%   fs 240 in 1% at alpha 4, 16% at 4.5, 58% at 5, 79% at 5.5, 82% at 6.
-%   Median L/N fell from 0.97 (alpha 3) to 0.53 (alpha 6) at N 3000.
+%   RANGE, measured against known truth on exact references (k-fold integrated fractional Gaussian noise, no low-frequency break;
+%   fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20 Hz; 200 series per cell). Runs, md5s and tables: validation/rangeEvidence_v001.md.
+%   A failure is an error or no accepted draw. Alpha is the generator's exponent, because failure follows it and not the in-band slope:
+%   alpha 3.05 has an in-band slope of only 2.35-2.61 and still fails like alpha 2.95.
+%     alpha -0.75 to 2.5   validated: at most 1.1% of series fail (3.5% in the worst configuration)
+%     alpha 2.75           7% fail (21% in the worst configuration)
+%     alpha 2.95 to 4      24-48% fail
+%     alpha 4.25 to 4.5    68-80% fail
+%     alpha 4.75           92% fail
+%     alpha 4.95 to 6.75   96-100% fail
+%   These failures are loud: "shapeNoise:noSegment", or "shapeNoise:segmentAlpha" when the segment is too short to estimate. Nothing is
+%   shortened further or substituted. Odd-integer alpha has no exact reference, so it has no known-truth check.
+%   Steeper series work when they have a low-frequency break or leak. noiseXu with Phi 0.99 is accepted in at least 98% of series up to an
+%   in-band slope of 4.5, 93% at 4.5-5, 83% at 5-5.5, 70% at 5.5-6 and 44% at 6-7. Real movement residuals after stripping K = 1 harmonic:
+%   97.0% of 7948 axes accepted, 93.7% of those with a residual alpha above 5, and none ended in noSegment.
+%   The exponent itself is limited by estimateWhittleAlpha: within 0.08 of the in-band slope for alpha -1.5 to 9.5, and an error when the
+%   estimate reaches AlphaBounds [-2 10] (45% of series at alpha -2, 33% at alpha 10).
+%   Random phases keep the amplitude spectrum only: non-Gaussian structure in the residual is not reproduced.
+%   Across many calls, summariseShapeNoiseBatch reports acceptance and tries, which show departures from a clean power law. Mouse data
+%   recorded with operating-system pointer smoothing on are an example of what its warning is for.
 %
 %   TEMPLATE-SUBTRACTED DATA: pass only the part of the residual the
 %   template actually covered. A stretch left at exactly zero (an uncovered
@@ -107,10 +120,9 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %          "shapeNoise:estimateFailed"; 1-by-C). "legacy": Method only.
 %
 % NOTES ON SCOPE (read before using it outside movement data):
-%   VALIDATED RANGE. The defaults (AlphaTol 0.3, MaxDraw 20, MinLength 32, the detect rule) were set and checked on
-%     template-subtracted movement residuals and noiseXu references at alpha 3-6, N 1000-3000, fs 133-240 Hz. Shallower
-%     exponents (alpha 0-2), long records (N of 10^4 or more) and non-Hz units are not validated; check the surrogate
-%     against your data (info.dAlpha, info.Lfrac, a spectrum plot) before relying on it.
+%   VALIDATED RANGE. See RANGE above. Known-truth checks cover fs 120-300 Hz and N 1000 and 3000 with the 1-20 Hz band. Long records
+%     (N of 10^4 or more), other bands and non-Hz units have no known-truth check; look at the surrogate against your data
+%     (info.dAlpha, info.Lfrac, a spectrum plot) before relying on it.
 %   CHANNELS. Each channel gets its own independent random phases, so the surrogate keeps each channel's amplitude spectrum and
 %     length L but NOT any coherence or correlation between channels. That is intended for the x and y noise of a movement; it is
 %     not a multivariate surrogate.
