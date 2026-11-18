@@ -39,7 +39,14 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 % ERRORS (fail loud): non-finite or constant input, fewer than 10 bins in the band, series too short for DFA,
 %   optimiser on a bound or not converged.
 %
-% Requires base MATLAB only. Reference: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range
+% SAMPLING ERROR: for an untapered local Whittle estimate from m frequencies near zero, the estimate of H has asymptotic variance
+%   1/(4m) (Robinson 1995, Theorem 2), so SD(alpha) = 1/sqrt(m), because alpha = 2H - 1. Tapering inflates the variance (Hurvich & Chen 2000
+%   obtain 1.5/(4m) for their own complex-valued taper). This estimator uses a Hann taper on a band that does not start at the lowest
+%   frequency, so neither value applies directly. Measured on exact references (fs 120-300 Hz, N 1000 and 3000, band 1-20 Hz), the SD is about
+%   twice 1/sqrt(m); see validation/reportToleranceTable_v002.py.
+%
+% Requires base MATLAB only. References: Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory
+% time series. Journal of Time Series Analysis, 21(2), 155-180. Robinson, P. M. (1995). Gaussian semiparametric estimation of long range
 % dependence. Annals of Statistics, 23(5), 1630-1661. Kiyono, K. (2015). Establishing a direct connection between
 % detrended fluctuation analysis and Fourier analysis. Physical Review E, 92, 042925.
 

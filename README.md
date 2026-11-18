@@ -127,7 +127,7 @@ Tests cover known-alpha recovery, peak removal, surrogate fidelity at steep alph
 The bundled example series is the Hadley Centre Central England Temperature (HadCET) dataset. Contains public sector information licensed under the Open Government Licence v3.0. Source: Met Office Hadley Centre, www.metoffice.gov.uk/hadobs. Cite Parker, Legg & Folland (1992), Int. J. Climatol. 12, 317-342.
 
 - `noiseXu`: Xu, C. (2019). An easy algorithm to generate colored noise sequences. *The Astronomical Journal*, 157(3), 127.
-- `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range dependence. *Annals of Statistics*, 23(5), 1630-1661; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92, 042925.
+- `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range dependence. *Annals of Statistics*, 23(5), 1630-1661; Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory time series. *Journal of Time Series Analysis*, 21(2), 155-180; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92, 042925.
 - `estimateIRASA`: Wen, H., & Liu, Z. (2016). Separating fractal and oscillatory components in the power spectrum of neurophysiological signal. *Brain Topography*, 29(1), 13-26.
 - `checkSpectralKnee`: Preston, M., Smith, S., & Voytek, B. (2026). *Nature Human Behaviour*.
 - `external/fftnoise/fftnoise.m`: (c) Aslak Grinsted 2011, BSD 2-clause, bundled unmodified.
