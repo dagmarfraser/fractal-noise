@@ -91,6 +91,7 @@ M = [
  mk("S4", "shapeNoise", SN, "allow fHigh = fs/2", "if band(2) >= fs/2 || band(2) <= band(1)", "if band(2) > fs/2 || band(2) <= band(1)")
  mk("S5", "shapeNoise", SN, "zero-tail threshold 3 to 4", "if lead >= 3 || trail >= 3", "if lead >= 4 || trail >= 4")
  mk("S6", "shapeNoise", SN, "kinematic band upper edge 20 to 25", "kin = @() [1, min(20, fs/2 - 1)];", "kin = @() [1, min(25, fs/2 - 1)];")
+ mk("S8", "shapeNoise", SN, "default MinLength back to 32", "mustBeGreaterThanOrEqual(options.MinLength, 5)} = 120", "mustBeGreaterThanOrEqual(options.MinLength, 5)} = 32")
  mk("C1", "harmonicContent", HC, "count stops one harmonic late", "K = max(1, below - 1);", "K = max(1, below);")
  mk("C2", "harmonicContent", HC, "no between-harmonic noise reference", "ampNull(k) = sqrt(Am(2 * k - 1) * Am(2 * k + 1));", "ampNull(k) = 1;")
  mk("C4", "harmonicContent", HC, "noHarmonic flag always false", """noHarmonic"", ~(ratio(1) >= options.Cut)", """noHarmonic"", false")

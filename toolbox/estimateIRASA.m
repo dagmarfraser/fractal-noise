@@ -112,29 +112,29 @@ function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x,
 %       When ComparePMTM=false (default), pmInfo is returned as a
 %       struct with available=false and message="ComparePMTM not requested".
 %
-% RANGE (validation/irasaOptions/checkIRASAOptions_v001, N 3000, band
-% 1-20 Hz, fs 100 and 240, alpha 1.5-5.5, 10 series per cell):
+% RANGE (validation/irasaOptions/checkIRASAOptions_v002 and reportIRASAOptions_v002, N 3000,
+% band 1-20 Hz, fs 100 and 240, alpha 1.5-5.5, 10 series per cell, peak-free noise; measured
+% 2026-11-21 under the default Resampling="irasa", with "legacy" run on the same series):
 %   The default (pmtm, no prewhitening) depends on the noise, not just
 %   on alpha. On noise with a low-frequency break (noiseXu default Phi)
-%   it is within +/-0.1 to alpha 5.5. On break-free noise (exact
+%   it is within +/-0.12 to alpha 5.5. On break-free noise (exact
 %   integrated fGn, or noiseXu Phi = 1) it overshoots from alpha 3.5 at
-%   fs 240 (+0.5 at 3.5, +1.7 to +2.1 at 4.5) and collapses at alpha 5.5,
-%   fs 100 (-2.1). PSD="welch" alone halves but does not remove this
-%   (+0.4 to +0.6 at alpha >= 4.5). Prewhiten=k, with either PSD, keeps
-%   the bias within +/-0.23 on all three generators, the same as
-%   estimateWhittleAlpha. For real data, where you do not know whether
-%   there is a break, use Prewhiten for alpha above about 3, or use
-%   estimateWhittleAlpha.
+%   fs 240 (+0.5 to +0.6 at 3.5, +1.7 to +2.0 at 4.5) and collapses at
+%   alpha 5.5, fs 100 (-2.1). PSD="welch" alone reduces but does not
+%   remove this (+0.3 to +0.5 at alpha >= 4.5). Prewhiten=k, with either
+%   PSD, keeps the bias within +/-0.29 on all three generators
+%   (estimateWhittleAlpha: +/-0.22 on the same series). For real data,
+%   where you do not know whether there is a break, use Prewhiten for
+%   alpha above about 3, or use estimateWhittleAlpha.
+%   On these peak-free series "legacy" gives nearly the same figures
+%   (at most 0.19 apart in any cell; prewhitened worst case 0.23), so
+%   the advice above holds for both. What separates them is peak
+%   removal, which these series do not test (see the tests).
 %   ComparePMTM is NOT an independent check of the default: it fits the
 %   same un-resampled pmtm PSD, so it shares the leakage, and agreement
 %   with alphaEst does not validate it on steep spectra. CompareFieldTrip
 %   changes only the taper (one whole-record Hann) and keeps IRASA.
-%   The figures above were measured before v2.0.0, that is with
-%   Resampling="legacy", on peak-free noise. They have NOT yet been
-%   re-measured under the default "irasa"; on peak-free noise at alpha 2
-%   the two agree (tests), and steep break-free noise still needs
-%   Prewhiten under either. FieldTrip implements "irasa", so
-%   CompareFieldTrip now compares like with like.
+%   FieldTrip implements "irasa", so CompareFieldTrip compares like with like.
 
 % FIELDTRIP DEPENDENCY POLICY:
 %   CompareFieldTrip defaults to false, so estimateIRASA has no hard

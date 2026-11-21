@@ -27,6 +27,14 @@ An API audit (2026-11-17) found the defaults tied to the first use case (hand-mo
   whose message points to `harmonicContent`; there is no default and no warning. `harmonicContent` stays the per-record diagnostic, and the README
   has a short workflow, "Choosing K for your data" (worked on HadCET 1900-2025: K = 2). The information-criterion selector stays planned for v2.1.0.
   Known-answer and fail-loud tests in `testWrappers`; two new mutants (W4, W5) restore a default K, and both are killed.
+- `shapeNoise` `MinLength` default is 120 (was 32), 2026-11-21. Shorter segments were often too short for `estimateWhittleAlpha`. Rerunning
+  every validation grid with 120 (`validation/rangeEvidence_v002.md`; v001 kept): the too-short `segmentAlpha` failures disappear and
+  those series end in `noSegment` instead; failure rates rise by at most 2.6 percentage points (none up to alpha 2.25); surrogate
+  quality and real-residual acceptance (97.0% of 7948 axes) are unchanged. A record shorter than 120 samples is now an error
+  (`shapeNoise:short`); pass `MinLength` lower only if you check the exponent yourself. Test `testDefaultMinLengthIs120`; mutant S8.
+- `estimateIRASA` accuracy re-measured under the default `Resampling="irasa"` (2026-11-21, `validation/irasaOptions/checkIRASAOptions_v002`,
+  legacy run on the same series). The help RANGE now gives these figures: on peak-free noise the default and legacy agree within 0.19;
+  with `Prewhiten` the worst bias is +/-0.29 (was +/-0.23 under legacy); the advice is unchanged.
 - New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
 - `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
 - Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.
@@ -119,16 +127,16 @@ N 1000. One reference in 100 at alpha 3.5, N 1000, had no accepted draw.
 
 **Range.** Measured against known truth on exact references with no
 low-frequency break (fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20
-Hz; 200 series per cell; `validation/rangeEvidence_v001.md`). Share of
-series that fail: at most 1.1% for alpha -0.75 to 2.5 (3.5% in the worst
-configuration), 7% at 2.75, 24-48% from 2.95 to 4, 68-80% at 4.25 to 4.5,
+Hz; 200 series per cell; default `MinLength` 120; `validation/rangeEvidence_v002.md`). Share of
+series that fail: at most 1.3% for alpha -0.75 to 2.5 (3.5% in the worst
+configuration), 8% at 2.75, 25-51% from 2.95 to 4, 69-81% at 4.25 to 4.5,
 92% at 4.75 and 96-100% from 4.95 to 6.75. These are errors
-(`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha` when the segment is
-too short to estimate its exponent), not quietly shortened or substituted.
+(`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha` if a segment's exponent
+cannot be estimated), not quietly shortened or substituted.
 Series with a low-frequency break or leak reach further: noiseXu with Phi
 0.99 is accepted in at least 98% of series up to an in-band slope of 4.5,
 and real movement residuals after stripping K = 1 harmonic in 97.0% of
-7948 axes (93.7% above alpha 5), with no `shapeNoise:noSegment`.
+7948 axes (93.7% above alpha 5); against `MinLength` 32 no axis moved between accepted and failed.
 
 **What changes for callers**
 

@@ -35,20 +35,23 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   validation/checkShapeNoiseMechanism_v001.m).
 %
 %   RANGE, measured against known truth on exact references (k-fold integrated fractional Gaussian noise, no low-frequency break;
-%   fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20 Hz; 200 series per cell). Runs, md5s and tables: validation/rangeEvidence_v001.md.
+%   fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20 Hz; 200 series per cell; default MinLength 120). Runs, md5s and tables:
+%   validation/rangeEvidence_v002.md (v001 holds the same runs with MinLength 32).
 %   A failure is an error or no accepted draw. Alpha is the generator's exponent, because failure follows it and not the in-band slope:
 %   alpha 3.05 has an in-band slope of only 2.35-2.61 and still fails like alpha 2.95.
-%     alpha -0.75 to 2.5   validated: at most 1.1% of series fail (3.5% in the worst configuration)
-%     alpha 2.75           7% fail (21% in the worst configuration)
-%     alpha 2.95 to 4      24-48% fail
-%     alpha 4.25 to 4.5    68-80% fail
+%     alpha -0.75 to 2.5   validated: at most 1.3% of series fail (3.5% in the worst configuration)
+%     alpha 2.75           8% fail (21% in the worst configuration)
+%     alpha 2.95 to 4      25-51% fail
+%     alpha 4.25 to 4.5    69-81% fail
 %     alpha 4.75           92% fail
 %     alpha 4.95 to 6.75   96-100% fail
-%   These failures are loud: "shapeNoise:noSegment", or "shapeNoise:segmentAlpha" when the segment is too short to estimate. Nothing is
+%   These failures are loud: "shapeNoise:noSegment" (with MinLength 120 a segment too short to estimate is no longer searched),
+%   or "shapeNoise:segmentAlpha" if the segment's exponent still cannot be estimated. Nothing is
 %   shortened further or substituted. Odd-integer alpha has no exact reference, so it has no known-truth check.
 %   Steeper series work when they have a low-frequency break or leak. noiseXu with Phi 0.99 is accepted in at least 98% of series up to an
-%   in-band slope of 4.5, 93% at 4.5-5, 83% at 5-5.5, 70% at 5.5-6 and 44% at 6-7. Real movement residuals after stripping K = 1 harmonic:
-%   97.0% of 7948 axes accepted, 93.7% of those with a residual alpha above 5, and none ended in noSegment.
+%   in-band slope of 4.5, 92% at 4.5-5, 81% at 5-5.5, 70% at 5.5-6 and 43% at 6-7. Real movement residuals after stripping K = 1 harmonic:
+%   97.0% of 7948 axes accepted, 93.7% of those with a residual alpha above 5. Against MinLength 32 no axis moved between accepted and
+%   failed; 5 failures changed kind (3 now noSegment, 2 records of 101 samples now "shapeNoise:short").
 %   The exponent itself is limited by estimateWhittleAlpha: within 0.08 of the in-band slope for alpha -1.5 to 9.5, and an error when the
 %   estimate reaches AlphaBounds [-2 10] (45% of series at alpha -2, 33% at alpha 10).
 %   Random phases keep the amplitude spectrum only: non-Gaussian structure in the residual is not reproduced.
@@ -63,7 +66,7 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % SYNTAX:
 %   [n, info] = shapeNoise(resid, fs, [])          % target alpha = segment's own (recommended)
 %   [n, info] = shapeNoise(resid, fs, alpha)       % explicit target, scalar or 1-by-C
-%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, MinLength=32, AlphaBand=[1 20])   % band in the units of fs; "kinematic" = [1, min(20, fs/2 - 1)] Hz
+%   [n, info] = shapeNoise(___, AlphaTol=0.3, MaxDraw=20, MinLength=120, AlphaBand=[1 20])   % band in the units of fs; "kinematic" = [1, min(20, fs/2 - 1)] Hz
 %   [n, info] = shapeNoise(___, CheckUncovered=false)                      % allow exact zeros at the ends (counts, rainfall)
 %   [n, info] = shapeNoise(___, SegmentRule="budget", SegmentBudget=0.01)   % wrap adds <= 1% derivative energy
 %   [n, info] = shapeNoise(___, SegmentRule="tol", FairShareTol=1)          % wrap <= Tol x mean terms
@@ -97,8 +100,12 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %                          of the v2.0.0 drafts; stricter at long L).
 %   SegmentBudget - Energy share for "budget" (no default; required there).
 %   FairShareTol - Tolerance for "tol" (1).
-%   MinLength    - Shortest segment searched (32 samples). No segment at
-%                  or above it is an error ("shapeNoise:noSegment").
+%   MinLength    - Shortest segment searched (120 samples; 32 before 2026-11-21). No segment at
+%                  or above it is an error ("shapeNoise:noSegment"); a record shorter than it is an error ("shapeNoise:short").
+%                  Below about 120 samples a segment is often too short for estimateWhittleAlpha (its DFA pre-estimate needs
+%                  100 samples after differencing). On the exact-reference grids, 120 removed every segmentAlpha failure caused
+%                  by a too-short segment; those series now end in noSegment, and failure rates rose by at most 2.6 percentage
+%                  points (validation/rangeEvidence_v002.md). Lower it only if you check the exponent yourself.
 %   AlphaBand    - [fLow fHigh] for estimateWhittleAlpha, in the units of fs (0 < fLow < fHigh < fs/2), or "kinematic"
 %                  ([1, min(20, fs/2 - 1)] Hz, the band validated on hand-movement residuals). NOT GIVEN: the kinematic
 %                  band is used with the warning "shapeNoise:defaultAlphaBand", because it assumes Hz-scale movement
@@ -156,7 +163,7 @@ arguments
     options.SegmentRule (1, 1) string {mustBeMember(options.SegmentRule, ["detect", "budget", "tol"])} = "detect"
     options.SegmentBudget double = []
     options.FairShareTol (1, 1) double {mustBePositive} = 1
-    options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 32
+    options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 120
     options.AlphaBand = [NaN NaN]
     options.CheckUncovered (1, 1) logical = true
     options.PhaseSource = ""

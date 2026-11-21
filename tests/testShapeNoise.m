@@ -234,9 +234,27 @@ classdef testShapeNoise < matlab.unittest.TestCase
         end
 
         function testSegmentTooShortForAlphaErrors(testCase)
-            % 80 white samples: a segment is found, but too short for estimateWhittleAlpha.
+            % 80 white samples with MinLength lowered to 32: a segment is found, but too short for estimateWhittleAlpha.
             rng(15);  x = randn(80, 1);
-            testCase.verifyError(@() shapeNoise(x, 100, []), "shapeNoise:segmentAlpha");
+            testCase.verifyError(@() shapeNoise(x, 100, [], MinLength=32), "shapeNoise:segmentAlpha");
+        end
+
+        function testDefaultMinLengthIs120(testCase)
+            % Known answer for the default: 119 samples is shorter than MinLength 120 (error, naming 120); 120 samples passes that check.
+            rng(16);  x = noiseXu(400, 1.0, 1, 100);
+            testCase.verifyError(@() shapeNoise(x(1:119), 100, [], AlphaBand=[1 20]), "shapeNoise:short");
+            try
+                shapeNoise(x(1:119), 100, [], AlphaBand=[1 20]);
+            catch err
+                testCase.verifySubstring(err.message, "MinLength 120");
+            end
+            try
+                shapeNoise(x(1:120), 100, [], AlphaBand=[1 20]);
+            catch err
+                testCase.verifyNotEqual(string(err.identifier), "shapeNoise:short");
+            end
+            [~, info] = shapeNoise(x, 100, [], AlphaBand=[1 20]);
+            testCase.verifyGreaterThanOrEqual(info.L, 120);
         end
 
         function testAlphaSizeErrors(testCase)
