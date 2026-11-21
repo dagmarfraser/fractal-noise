@@ -270,6 +270,25 @@ classdef testShapeNoise < matlab.unittest.TestCase
             testCase.verifyEqual(info.nDraw, 3);
         end
 
+        function testPeakInBandWarnsOncePerChannel(testCase)
+            % The estimateWhittleAlpha peak check runs once per channel on its segment (the draws run without it), so a peak in
+            % both channels gives exactly two warnings however many draws are made, and info records which channels and where.
+            rng(21);  t = (0:2999)' / 240;
+            X = [noiseXu(3000, 2.5, 1, 240, Phi=1), noiseXu(3000, 2.5, 1, 240, Phi=1)];
+            X = X + 0.3 * std(X(:, 1)) * [sin(2 * pi * 10 * t), sin(2 * pi * 15 * t)];
+            out = evalc("[n, info] = shapeNoise(X, 240, [], AlphaBand=[1 20], MaxDraw=20);");
+            testCase.verifyEqual(numel(strfind(out, "Narrow peak in the band")), 2, out);
+            testCase.verifyEqual(info.peakInBand, [true true]);
+            testCase.verifyEqual(info.peakHz, [10 15], "AbsTol", 0.2);
+            testCase.verifyEqual(size(n, 2), 2);
+            rng(22);  clean = noiseXu(3000, 2.5, 1, 240, Phi=1);
+            [~, info2] = testCase.verifyWarningFree(@() shapeNoise(clean, 240, [], AlphaBand=[1 20]));
+            testCase.verifyFalse(info2.peakInBand);
+            testCase.verifyTrue(isnan(info2.peakHz));
+            [~, info3] = testCase.verifyWarningFree(@() shapeNoise(X(:, 1), 240, [], AlphaBand=[1 20], PeakCheck=false));
+            testCase.verifyTrue(info3.peakInBand, "PeakCheck=false silences the warning but still records the hit.");
+        end
+
         function testLegacyWarns(testCase)
             rng(15);  x = cumsum(randn(300, 1));
             testCase.verifyWarning(@() shapeNoise(x, 100, 2.0, Method="legacy"), "shapeNoise:legacyConstruction");

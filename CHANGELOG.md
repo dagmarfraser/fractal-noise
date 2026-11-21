@@ -54,6 +54,15 @@ An API audit (2026-11-17) found the defaults tied to the first use case (hand-mo
   Hurvich, Lang & Soulier 2005), pinned by `testHannTaperProtectsAgainstUnderDifferencing`. New PEAKS section: a rhythmic peak inside the
   band biases the estimate badly, usually without an error (a 10 Hz sine of 1% of the SD moves alpha 4.5 to -0.64), while `estimateIRASA`
   with `Prewhiten` stays within 0.18 (`validation/checkWhittlePeak_v001.m`).
+- Peak check, 2026-11-21. `estimateWhittleAlpha` warns `estimateWhittleAlpha:peakInBand` when a bin is far above the mean of its
+  neighbours (up to 12 either side, leaving out +/-2) once the fitted slope is flattened; the estimate is unchanged. The threshold is
+  set from theory (the ratio is F(2, 2n) with no peak; n shrunk by the Hann factor 18/35) so that a false warning has chance
+  `PeakFalseAlarm` (1e-4) per call; nothing is tuned on data. New outputs `info.peakRatio`, `peakThreshold`, `peakHz`; `PeakCheck=false`
+  turns it off. `shapeNoise` runs it once per channel on the segment (not in every draw) and records `info.peakInBand` and `info.peakHz`.
+  Calibration (`validation/calibratePeakCheck_v002.m`): no false warning in 16,800 peak-free series; steep series' peaks caught from
+  0.1-0.3% of the SD; shallow series and low-frequency peaks only when larger, and some missed peaks still bias by up to 0.85. On the
+  real residuals (read-only count, aggregates only) 1.3% of axes warn at K = 1, most at the 2nd harmonic of f0, and 0.9% at K = 4.
+  Tests in `testEstimateWhittleAlpha` and `testShapeNoise`; mutants P1-P6.
 - New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
 - `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
 - Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.

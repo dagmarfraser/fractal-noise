@@ -113,6 +113,10 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   CheckUncovered - true (default): exact-zero stretches of 3 or more samples at either end are an error
 %                  (an uncovered template stretch, "shapeNoise:zeroTail"). false: skip the check, for data with
 %                  legitimate zeros (counts, rainfall); you then own the check that no template tail is left at zero.
+%   PeakCheck    - true (default): each channel's segment goes through the estimateWhittleAlpha peak check once, which warns
+%                  "estimateWhittleAlpha:peakInBand" when a narrow peak in the band would bias the exponent this function
+%                  selects on (a harmonic left after the template: raise K). info.peakInBand and info.peakHz record it either way;
+%                  false only silences the warning.
 %   PhaseSource  - "legacy" only: "xu" (default), "white", "pinknoise",
 %                  "dsp" or a function handle @(M, fs, alpha).
 %
@@ -124,7 +128,10 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %          segment's mean terms; 1-by-C), qJ, qS (the "detect" levels at L),
 %          alphaTarget, nDraw, accepted, dAlpha, nEstFail (draws whose alpha
 %          estimate errored, counted as rejected and warned about as
-%          "shapeNoise:estimateFailed"; 1-by-C). "legacy": Method only.
+%          "shapeNoise:estimateFailed"; 1-by-C), peakInBand, peakHz (1-by-C: the
+%          estimateWhittleAlpha peak check on each channel's segment, which warns
+%          "estimateWhittleAlpha:peakInBand" once per channel; PeakCheck=false turns it
+%          off). "legacy": Method only.
 %
 % NOTES ON SCOPE (read before using it outside movement data):
 %   VALIDATED RANGE. See RANGE above. Known-truth checks cover fs 120-300 Hz and N 1000 and 3000 with the 1-20 Hz band. Long records
@@ -166,6 +173,7 @@ arguments
     options.MinLength (1, 1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.MinLength, 5)} = 120
     options.AlphaBand = [NaN NaN]
     options.CheckUncovered (1, 1) logical = true
+    options.PeakCheck (1, 1) logical = true
     options.PhaseSource = ""
 end
 
@@ -200,18 +208,31 @@ if options.SegmentRule == "budget" && ~(isscalar(options.SegmentBudget) && optio
 end
 [i0, i1, seg] = endMatchedSegments(resid, options.SegmentRule, options.FairShareTol, options.SegmentBudget, options.MinLength);
 L = seg.L;
+peakInBand = false(1, C);  peakHz = NaN(1, C);   % the estimateWhittleAlpha peak check, run once per channel on its segment
 if isempty(alpha)
     target = NaN(1, C);
     for ch = 1:C
         try
-            target(ch) = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2));
+            [target(ch), ~, segInfo] = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2), PeakCheck=options.PeakCheck);
+            [peakInBand(ch), peakHz(ch)] = peakFlag(segInfo);
         catch cause
             err = MException("shapeNoise:segmentAlpha", ...
-                "channel %d: the end-matched segment (L = %d of %d samples) is too short to estimate its alpha: %s", ...
+                "channel %d: the exponent of the end-matched segment (L = %d of %d samples) could not be estimated: %s", ...
                 ch, L, N, cause.message);
             throw(addCause(err, cause));
         end
     end
+else
+    for ch = 1:C   % a given target: the segment is estimated only for the peak check; a failure here is left to the draws
+        try
+            [~, ~, segInfo] = estimateWhittleAlpha(resid(i0(ch):i1(ch), ch), fs, band(1), band(2), PeakCheck=options.PeakCheck);
+            [peakInBand(ch), peakHz(ch)] = peakFlag(segInfo);
+        catch
+        end
+    end
+end
+if isempty(alpha)
+    % target estimated from the segment above
 elseif isscalar(alpha)
     target = repmat(alpha, 1, C);
 elseif numel(alpha) == C
@@ -233,7 +254,8 @@ if ~all(accepted)
         options.AlphaTol, options.MaxDraw, mat2str(find(~accepted)));
 end
 info = struct("Method", "endMatched", "SegmentRule", seg.rule, "i0", i0, "i1", i1, "L", L, "Lfrac", L / N, ...
-    "cJump", seg.cJump, "cSlip", seg.cSlip, "cSlipMax", seg.cSlipMax, "qJ", seg.qJ, "qS", seg.qS, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail, "AlphaBand", band);
+    "cJump", seg.cJump, "cSlip", seg.cSlip, "cSlipMax", seg.cSlipMax, "qJ", seg.qJ, "qS", seg.qS, "alphaTarget", target, "nDraw", nDraw, "accepted", accepted, "dAlpha", dAlpha, "nEstFail", nEstFail, "AlphaBand", band, ...
+    "peakInBand", peakInBand, "peakHz", peakHz);
 if any(nEstFail > 0)
     warning("shapeNoise:estimateFailed", ...
         "estimateWhittleAlpha failed on %d draw(s) (counted as rejected; info.nEstFail). Last message: %s", ...
@@ -320,6 +342,12 @@ for ch = 1:C
 end
 end
 
+function [flag, hz] = peakFlag(info)
+% The estimateWhittleAlpha peak check's verdict on one segment.
+flag = info.peakRatio > info.peakThreshold;  hz = NaN;
+if flag, hz = info.peakHz; end
+end
+
 function [u, k, ok, dA, nFail, msg] = drawEndMatched(ref, aRef, fs, band, tol, maxDraw)
 % endMatchedNoise_v001 drawAxis, with estimateWhittleAlpha for alphaPWLW_v001.
 L = numel(ref);  A = abs(fft(ref - mean(ref)));  h = floor((L - 1) / 2);  sR = std(ref);  ok = false;  dA = NaN;  nFail = 0;  msg = "";
@@ -329,7 +357,7 @@ for k = 1:maxDraw
     u = real(ifft(Z));  u = u - mean(u);  u = u / std(u) * sR;
     d = NaN;
     try
-        d = estimateWhittleAlpha(u, fs, band(1), band(2)) - aRef;
+        d = estimateWhittleAlpha(u, fs, band(1), band(2), PeakCheck=false) - aRef;   % checked once, on the segment
     catch err
         nFail = nFail + 1;  msg = string(err.message);   % rejected draw, reported by the caller
     end

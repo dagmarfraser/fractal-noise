@@ -36,20 +36,30 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 %   DFAOrder    - Name-value. Order of the DFA pre-estimate, default 3.
 %   MaxK        - Name-value. Largest automatic k, default 3.
 %   AlphaBounds - Name-value. Search interval for alpha, default [-2 10].
+%   PeakCheck   - Name-value. Warn about a narrow peak in the band (default true; see PEAKS).
+%   PeakFalseAlarm - Name-value. Chance of a false warning per call on peak-free data (default 1e-4).
 %
 % OUTPUTS:
 %   alphaEst - Spectral exponent (S ~ f^-alpha) over [fLow, fHigh]
 %   kUsed    - Differencing order used
-%   info     - struct: alphaDFA (pre-estimate), nBins (periodogram bins in the band), objective (at the minimum)
+%   info     - struct: alphaDFA (pre-estimate), nBins (periodogram bins in the band), objective (at the minimum),
+%              peakRatio, peakThreshold, peakHz (the most significant bin of the peak check; it warns when ratio > threshold)
 %
 % ERRORS (fail loud): non-finite or constant input, fewer than 10 bins in the band, series too short for DFA,
 %   optimiser on a bound or not converged.
 %
-% PEAKS: a rhythmic peak inside the band biases this estimate badly, usually WITHOUT an error. On exact references with a
-%   10 Hz sine added (amplitude a fraction of the series' SD, band 1-20 Hz), the median moved from 2.52 to 2.45 at 1% and to
-%   1.01 at 10% for alpha 2.5, and from 4.52 to -0.64 at 1% for alpha 4.5; estimateIRASA with Prewhiten = k stayed within
-%   0.18 of the peak-free value (validation/checkWhittlePeak_v001.m). If the band may hold a peak (a harmonic left after the
-%   template, a tremor, mains hum), use estimateIRASA with Prewhiten, or remove the peak first.
+% PEAKS: a rhythmic peak inside the band biases this estimate badly, and the estimate alone does not show it. On exact references
+%   with a 10 Hz sine added (amplitude a fraction of the series' SD, band 1-20 Hz), the median moved from 2.52 to 1.01 at 10% for
+%   alpha 2.5, and from 4.52 to -0.64 at 1% for alpha 4.5; estimateIRASA with Prewhiten = k stayed within 0.18 of the peak-free
+%   value (validation/checkWhittlePeak_v001.m). So each call checks for a narrow peak: a bin far above the mean of its neighbours
+%   (up to 12 either side, leaving out +/-2) once the fitted slope is flattened. The threshold comes from theory, not from data:
+%   with no peak the ratio is F-distributed, and the threshold sets the chance of any false warning in the band to PeakFalseAlarm.
+%   A hit warns "estimateWhittleAlpha:peakInBand" (the estimate is still returned); use estimateIRASA with Prewhiten=k, or raise K
+%   if it is a harmonic of the movement left in the residual. Calibration (validation/calibratePeakCheck_v002.m): no warning in
+%   16,800 peak-free series (exact references, noiseXu with and without its break, white noise); peaks that bias steep series are
+%   caught (alpha 4.5 and 6.5: every 10 and 18 Hz sine from 0.3% of the SD, and from 0.1% at fs 240), but shallow series and low-
+%   frequency peaks are caught only when larger, and some missed peaks still bias the estimate by up to 0.85 (alpha 2.5, 18 Hz,
+%   1%; fs 133, N 1000). The check cannot see a broad bump.
 %
 % SAMPLING ERROR: for an untapered local Whittle estimate from m frequencies near zero, the estimate of H has asymptotic variance
 %   1/(4m) (Robinson 1995, Theorem 2), so SD(alpha) = 1/sqrt(m), because alpha = 2H - 1. Tapering inflates the variance (Hurvich & Chen 2000
@@ -77,6 +87,8 @@ arguments
     options.DFAOrder (1,1) double {mustBeInteger, mustBePositive} = 3
     options.MaxK (1,1) double {mustBeInteger, mustBeNonnegative} = 3
     options.AlphaBounds (1,2) double = [-2 10]
+    options.PeakCheck (1,1) logical = true
+    options.PeakFalseAlarm (1,1) double {mustBePositive, mustBeLessThan(options.PeakFalseAlarm, 1)} = 1e-4
 end
 x = double(x(:));
 if ~all(isfinite(x)), error('estimateWhittleAlpha:nonFinite', 'x contains NaN or Inf.'); end
@@ -101,9 +113,35 @@ lam = 2*pi*f(m)/fs;  Ib = I(m) ./ (2 - 2*cos(lam)).^kUsed;
 obj = @(a) log(mean(lam.^a .* Ib)) - a * mean(log(lam));
 lo = options.AlphaBounds(1);  hi = options.AlphaBounds(2);
 [alphaEst, info.objective, flag] = fminbnd(obj, lo, hi, optimset('TolX', 1e-6));
+% Peak check (a warning; the estimate is unchanged). Flatten the fitted slope, then compare each bin with the mean of up to 12
+% bins either side, leaving out the bin and its +/-2 neighbours (a Hann-tapered sine spreads over 3 bins). With no peak the bins
+% are exponential, so the ratio is F(2, 2n) with tail (1 + x/n)^(-n); n is the number of neighbours shrunk by 18/35, the Hann
+% correlation factor (Velasco 1999, p. 101). The threshold makes the chance of any false alarm in the band PeakFalseAlarm.
+[info.peakRatio, info.peakThreshold, info.peakHz] = peakOverNeighbours(lam.^alphaEst .* Ib, f(m), options.PeakFalseAlarm);
+if options.PeakCheck && info.peakRatio > info.peakThreshold
+    warning('estimateWhittleAlpha:peakInBand', ['Narrow peak in the band at %.3g Hz: %.1f times its neighbours (threshold %.1f, ' ...
+        'false-alarm rate %g per call). A peak biases this exponent. Use estimateIRASA with Prewhiten=k, or raise K if it is a ' ...
+        'harmonic of the movement left in the residual (see harmonicContent).'], info.peakHz, info.peakRatio, info.peakThreshold, options.PeakFalseAlarm);
+end
 if flag ~= 1 || alphaEst - lo < 1e-3 || hi - alphaEst < 1e-3
     error('estimateWhittleAlpha:bound', 'Optimiser on its bound or not converged (alpha = %.4f, bounds [%g %g], flag %d).', alphaEst, lo, hi, flag);
 end
+end
+
+function [r, thr, fPk] = peakOverNeighbours(z, f, falseAlarm)
+% Most significant bin over its neighbours' mean (see the peak check above). Returns its ratio, its threshold and its frequency;
+% NaN when no bin has at least 8 neighbours.
+nb = numel(z);  W = 12;  gap = 2;  ratio = NaN(nb, 1);  nUsed = zeros(nb, 1);
+for j = 1:nb
+    idx = [max(1, j - W):j - gap - 1, j + gap + 1:min(nb, j + W)];
+    if numel(idx) >= 8, ratio(j) = z(j) / mean(z(idx));  nUsed(j) = numel(idx); end
+end
+tested = ~isnan(ratio);
+if ~any(tested), r = NaN;  thr = NaN;  fPk = NaN;  return, end
+nEff = nUsed * 18 / 35;  pBin = falseAlarm / nnz(tested);
+x = nEff .* (pBin .^ (-1 ./ nEff) - 1);              % P(F(2, 2 nEff) > x) = pBin
+[~, k] = max(ratio ./ x);                              % the most significant bin
+r = ratio(k);  thr = x(k);  fPk = f(k);
 end
 
 function a = dfaAlphaLocal(x, order)

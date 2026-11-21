@@ -134,5 +134,57 @@ classdef testEstimateWhittleAlpha < matlab.unittest.TestCase
                 testCase.verifyEqual(median(e), a, "AbsTol", 0.1, sprintf("k one too low at alpha %.1f.", a));
             end
         end
+
+        function testPeakWarnsAndNamesTheWayOut(testCase)
+            % A 10 Hz sine of 1% of the SD on an alpha-4.5 exact reference biases the estimate by several units
+            % (validation/checkWhittlePeak_v001.m): the call warns estimateWhittleAlpha:peakInBand, names estimateIRASA and K,
+            % and still returns the (biased) estimate.
+            testCase.assumeTrue(isfolder(testCase.ExactRefDir), "validation/exactReference not present; skipping.");
+            addpath(testCase.ExactRefDir);  testCase.addTeardown(@() rmpath(testCase.ExactRefDir));
+            X = exactRefSeries_v001(3000, 4.5, 1);  x = X + 0.01 * std(X) * sin(2 * pi * 10 * (0:2999)' / 240);
+            [a, ~, info] = testCase.verifyWarning(@() estimateWhittleAlpha(x, 240, 1, 20, AlphaBounds=[-20 30]), "estimateWhittleAlpha:peakInBand");
+            testCase.verifyTrue(isfinite(a));
+            testCase.verifyEqual(info.peakHz, 10, "AbsTol", 0.2);
+            testCase.verifyGreaterThan(info.peakRatio, info.peakThreshold);
+            [~, msg] = lastwarn;  %#ok<ASGLU>
+            w = warning("off", "estimateWhittleAlpha:peakInBand");  restore = onCleanup(@() warning(w));  %#ok<NASGU>
+            lastwarn("");  estimateWhittleAlpha(x, 240, 1, 20, AlphaBounds=[-20 30]);  [m, id] = lastwarn;
+            testCase.verifyEqual(string(id), "estimateWhittleAlpha:peakInBand");
+            testCase.verifySubstring(m, "estimateIRASA");
+            testCase.verifySubstring(m, "raise K");
+            testCase.verifyWarningFree(@() estimateWhittleAlpha(x, 240, 1, 20, PeakCheck=false, AlphaBounds=[-20 30]));
+        end
+
+        function testNoFalseAlarmOnPeakFreeReferences(testCase)
+            % 0 false alarms in 16,800 peak-free series at the default rate (validation/calibratePeakCheck_v002.m); 80 here.
+            testCase.assumeTrue(isfolder(testCase.ExactRefDir), "validation/exactReference not present; skipping.");
+            addpath(testCase.ExactRefDir);  testCase.addTeardown(@() rmpath(testCase.ExactRefDir));
+            for a = [0.5 2.5 4.5 6.5]
+                X = exactRefSeries_v001(3000, a, 20);
+                for r = 1:20
+                    [~, ~, info] = testCase.verifyWarningFree(@() estimateWhittleAlpha(X(:, r), 240, 1, 20));
+                    testCase.verifyLessThanOrEqual(info.peakRatio, info.peakThreshold);
+                end
+            end
+        end
+
+        function testPeakThresholdFollowsFalseAlarmRate(testCase)
+            % Exact threshold for the reported bin: up to 12 neighbours either side minus the bin's +/-2, n = count x 18/35, and
+            % (1 + x/n)^(-n) = PeakFalseAlarm / bins tested. A smaller false-alarm rate puts the series further below its threshold.
+            rng(9);  x = noiseXu(3000, 2, 1, 240);
+            [~, k, i4] = estimateWhittleAlpha(x, 240, 1, 20);
+            [~, ~, i2] = estimateWhittleAlpha(x, 240, 1, 20, PeakFalseAlarm=1e-2);
+            M = 3000 - k;  f = (0:M - 1)' * 240 / M;  f = f(f >= 1 & f <= 20);  nb = numel(f);
+            testCase.verifyEqual(nb, i4.nBins);
+            cnt = @(jj) max(0, min(jj - 1, 12) - 2) + max(0, min(nb - jj, 12) - 2);
+            tested = arrayfun(cnt, (1:nb)') >= 8;
+            for c = {{1e-4, i4}, {1e-2, i2}}
+                [fa, info] = c{1}{:};
+                nEff = cnt(find(abs(f - info.peakHz) < 1e-9, 1)) * 18 / 35;
+                expected = nEff * ((fa / nnz(tested)) ^ (-1 / nEff) - 1);
+                testCase.verifyEqual(info.peakThreshold, expected, "AbsTol", 1e-9, sprintf("Threshold at PeakFalseAlarm %g.", fa));
+            end
+            testCase.verifyGreaterThan(i4.peakThreshold / i4.peakRatio, i2.peakThreshold / i2.peakRatio);
+        end
     end
 end

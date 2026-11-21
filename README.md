@@ -66,7 +66,7 @@ What the output tells you, step by step:
 
 - **Step 2.** `harmonicContent` counts the harmonics that stand out (K = 2 here). See [Choosing K for your data](#choosing-k-for-your-data) before you rely on one count.
 - **Step 4.** The knee check finds a knee near 0.3 Hz, below the 1-20 Hz band (`kneeInBand` false). The template removes a constant and a trend in each window of four cycles, which takes out the slowest drift. A knee below the band does not bias the exponent you measured over 1-20 Hz; a knee inside the band would.
-- **Step 5.** Each surrogate is a draw of noise like the residual's. To test a pattern, compute your statistic on the movement and on the surrogates (each added back to the template if your statistic needs the movement), and compare. `summariseShapeNoiseBatch` tells you whether the surrogates were built reliably across the batch.
+- **Step 5.** If `shapeNoise` warns `estimateWhittleAlpha:peakInBand`, a narrow peak is left in the residual (often a harmonic: raise K); `info.peakInBand` records it per channel. Each surrogate is a draw of noise like the residual's. To test a pattern, compute your statistic on the movement and on the surrogates (each added back to the template if your statistic needs the movement), and compare. `summariseShapeNoiseBatch` tells you whether the surrogates were built reliably across the batch.
 
 Steps 3 and 5 in one call: `[sur, info] = shapeNoiseWrapper(pos, fs, F0=1.2, K=K, AlphaBand="kinematic")`. The measured range of `shapeNoise` (how steep a record it handles) is in its help, under RANGE.
 
@@ -108,7 +108,7 @@ n = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=Kc);
 | Your signal | Use |
 |---|---|
 | Steep (alpha above about 3), or unknown | `estimateWhittleAlpha` |
-| Has rhythmic peaks you want ignored (or may have: a harmonic left after the template, tremor, mains hum) | `estimateIRASA`, with `Prewhiten=k` if it may be steep. `estimateWhittleAlpha` is biased by an in-band peak, usually without an error |
+| Has rhythmic peaks you want ignored (or may have: a harmonic left after the template, tremor, mains hum) | `estimateIRASA`, with `Prewhiten=k` if it may be steep. An in-band peak biases `estimateWhittleAlpha`; it warns (`estimateWhittleAlpha:peakInBand`) when it finds a narrow one |
 | Both | Run both and compare: `[~, k] = estimateWhittleAlpha(x, 240, 1, 20); estimateIRASA(x, 240, 1, 20, Prewhiten=k)` |
 
 - **`estimateWhittleAlpha`** differences the series k times (k from a DFA-3 pre-estimate), so low-frequency power cannot leak into the fitting band, then fits a local Whittle likelihood over your band. On exact reference series it is within 0.08 of the in-band slope for alpha -1.5 to 9.5, and it errors rather than return a number at its search bounds (`validation/rangeEvidence_v002.md`).
