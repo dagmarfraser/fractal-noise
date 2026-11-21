@@ -2,7 +2,7 @@
 % Reference: noiseXu, default Phi, 100 seeds per cell, alpha 0.5:0.5:6, band 1-20 Hz (estimateWhittleAlpha).
 % Configurations: fs 133 N 3000 (the example) and fs 240 N 1000 (a short trial).
 % Each surrogate is scored against the series it was built from: legacy against the whole reference,
-% endMatched against its fairShare segment (target alpha = the segment's own, alpha = []).
+% endMatched against its end-matched segment (default SegmentRule) (target alpha = the segment's own, alpha = []).
 %   gap   = alpha(surrogate) - alpha(source): median / p10 / p90 / share below -0.5
 %   d1,d2 = std(diff(surrogate, k)) / std(diff(source, k)), k = 1, 2: median (derivative noise)
 %   endMatched also: median L/N and share with no accepted draw (NaN, counted, not scored).

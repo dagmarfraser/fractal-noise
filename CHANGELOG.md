@@ -83,10 +83,16 @@ residual's. It was never released and has been removed.
 **Fix.** The default, `Method="endMatched"`:
 
 1. Find the longest length L at which every channel has a segment whose
-   wrap-around step and wrapped second differences are no larger than
-   the segment's own mean terms (`FairShareTol=1`; segment measures from
-   Schreiber & Schmitz 2000, Eqs. 16-17; longest-first search after
-   Nakamura, Small & Hirata 2006). Each channel takes its own best
+   wrap-around step, and each wrapped second difference, is no larger
+   than the largest expected among the segment's own steps:
+   q(n) = chi2inv(1 - 1/n, 1), about 2 ln n, times the mean squared step
+   (`SegmentRule="detect"`, no tolerance to choose; the wrap then adds at
+   most q(L-1)/(L-1) of the first-difference energy, about 1.4% at
+   L 1000). `SegmentRule="budget"` (e.g. `SegmentBudget=0.01`) and
+   `"tol"` (`FairShareTol`, wrap <= Tol x mean terms) are options. These
+   are the rules of the pre-registration's `endToEndSegment_v006`.
+   Segment measures from Schreiber & Schmitz 2000, Eqs. 16-17;
+   longest-first search after Nakamura, Small & Hirata 2006. Each channel takes its own best
    segment of that length.
 2. Put uniformly random phases on that segment's amplitude spectrum,
    remove the mean, scale to its std.
@@ -99,11 +105,12 @@ synthetic noise (`validation/checkShapeNoiseEndMatched_v001.m`):
 100 noiseXu references per cell, alpha 0.5-6, fs 133 N 3000 and fs 240
 N 1000. Legacy: 1-27% of surrogates more than 0.5 shallower than the
 reference at alpha 3-6 (27% at alpha 3.5, N 3000; 22% at alpha 4,
-N 1000). End-matched: every built surrogate was accepted within 20
-draws, first- and second-difference noise 1.00 of the segment's
+N 1000). End-matched (default rule): all but one built surrogate was
+accepted within 20 draws, first- and second-difference noise 1.00 of the segment's
 (median), none shallow (the selection step guarantees the exponent, so
 that column is a check of the code, not of the method). Median L/N 0.97
-at alpha 3, 0.72 at 5 and 0.53 at 6 (N 3000).
+at alpha 3, 0.84 at 5 and 0.70 at 6 (N 3000); 0.91, 0.56 and 0.52 at
+N 1000. One reference in 100 at alpha 3.5, N 1000, had no accepted draw.
 
 **Range.** Measured against known truth on exact references with no
 low-frequency break (fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20
