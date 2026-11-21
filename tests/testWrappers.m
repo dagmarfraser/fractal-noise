@@ -52,14 +52,14 @@ classdef testWrappers < matlab.unittest.TestCase
             testCase.verifyEqual(c.value([1 7]), [3.4; 18.4]);
         end
         function testCetSurrogateRunsInMonthlyUnits(testCase)
-            rng(7);  [n, info] = cetNoiseWrapper(FirstYear=1900, LastYear=2025);
+            rng(7);  [n, info] = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=2);
             testCase.verifyEqual(info.cet.fs, 12);
             testCase.verifyEqual(info.template.f0, 1);
             testCase.verifyTrue(all(isfinite(n), "all"));
             testCase.verifyEqual(size(n, 1), info.shape.L);
         end
         function testBadBandIsAnError(testCase)
-            testCase.verifyError(@() cetNoiseWrapper(FirstYear=1900, LastYear=2000, AlphaBand=[0.5 7]), "shapeNoise:alphaBand");
+            testCase.verifyError(@() cetNoiseWrapper(FirstYear=1900, LastYear=2000, K=2, AlphaBand=[0.5 7]), "shapeNoise:alphaBand");
         end
         function testMissingMonthInsideTheChosenYearsIsAnError(testCase)
             f = string(tempname) + ".txt";  cleanup = onCleanup(@() delete(f));  %#ok<NASGU>
@@ -72,6 +72,59 @@ classdef testWrappers < matlab.unittest.TestCase
             testCase.verifyError(@() cetNoiseWrapper(File=f, FirstYear=1999, LastYear=2001, LoadOnly=true), "cetNoiseWrapper:missing");
             c = cetNoiseWrapper(File=f, FirstYear=2001, LastYear=2001, LoadOnly=true);
             testCase.verifyEqual(c.value', 1:12);
+        end
+        function testKRequiredWhenATemplateIsStripped(testCase)
+            % K has no default: a template step without K is an error, not a silent K = 1 and not a warning.
+            rng(4);  t = (0:1/100:20)';  x = 2 * sin(2 * pi * 0.8 * t) + cumsum(cumsum(randn(numel(t), 1))) * 0.002;
+            testCase.verifyError(@() shapeNoiseWrapper(x, 100, F0=0.8, AlphaBand=[1 20]), "shapeNoiseWrapper:KRequired");
+            testCase.verifyError(@() shapeNoiseWrapper(x, 100, F0Band=[0.5 1.5], AlphaBand=[1 20]), "shapeNoiseWrapper:KRequired");
+            testCase.verifyError(@() shapeNoiseWrapper(x, 100, F0=0.8, K=[], AlphaBand=[1 20]), "shapeNoiseWrapper:KRequired");
+        end
+        function testKRequiredMessagePointsToHarmonicContent(testCase)
+            x = sin(2 * pi * (0:1/100:20)');
+            try
+                shapeNoiseWrapper(x, 100, F0=1, AlphaBand=[1 20]);
+                testCase.verifyFail("No error without K.");
+            catch err
+                testCase.verifyEqual(string(err.identifier), "shapeNoiseWrapper:KRequired");
+                testCase.verifySubstring(err.message, "harmonicContent");
+            end
+            try
+                cetNoiseWrapper(FirstYear=1900, LastYear=1950);
+                testCase.verifyFail("No error without K.");
+            catch err
+                testCase.verifyEqual(string(err.identifier), "cetNoiseWrapper:KRequired");
+                testCase.verifySubstring(err.message, "harmonicContent");
+            end
+        end
+        function testExplicitKIsExactlyTheTwoStepPath(testCase)
+            % Known answer: the wrapper with K given is harmonicTemplate with that K, then shapeNoise, bit for bit.
+            rng(4);  t = (0:1/100:20)';  x = 2 * sin(2 * pi * 0.8 * t) + 0.6 * sin(2 * pi * 1.6 * t) + cumsum(cumsum(randn(numel(t), 1))) * 0.002;
+            res = harmonicTemplate(x, 100, 0.8, 2, Window=4);
+            rng(21);  a = shapeNoise(res, 100, [], AlphaBand=[1 20]);
+            rng(21);  [b, info] = shapeNoiseWrapper(x, 100, F0=0.8, K=2, AlphaBand=[1 20]);
+            testCase.verifyEqual(info.template.K, 2);
+            testCase.verifyEqual(info.residual, res);
+            testCase.verifyEqual(b, a);
+        end
+        function testCetKRequired(testCase)
+            testCase.verifyError(@() cetNoiseWrapper(), "cetNoiseWrapper:KRequired");
+            testCase.verifyError(@() cetNoiseWrapper(FirstYear=1900, LastYear=2025), "cetNoiseWrapper:KRequired");
+            c = cetNoiseWrapper(LoadOnly=true, FirstYear=1900, LastYear=1901);    % loading alone needs no K
+            testCase.verifyEqual(numel(c.value), 24);
+        end
+        function testCetKChosenWithHarmonicContent(testCase)
+            % Known answer for the README workflow (bundled file, 1900-2025): ratios 73.83, 6.00, 0.56 for harmonics 1-3, so K = 2.
+            c = cetNoiseWrapper(LoadOnly=true, FirstYear=1900, LastYear=2025);
+            [K, hc] = harmonicContent(c.value, 12, 1);
+            testCase.verifyEqual(K, 2);
+            testCase.verifyEqual(hc.firstBelow, 3);
+            testCase.verifyFalse(hc.noHarmonic);
+            testCase.verifyEqual(hc.ratio(1:3), [73.83 6.00 0.56], AbsTol=0.01);
+            rng(7);  [a, info] = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=K);
+            rng(7);  b = shapeNoiseWrapper(c.value, 12, F0=1, K=2, Window=4, AlphaBand=[0.5 5]);
+            testCase.verifyEqual(info.template.K, 2);
+            testCase.verifyEqual(a, b);
         end
     end
 end

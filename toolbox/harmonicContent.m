@@ -37,7 +37,10 @@ function [K, info] = harmonicContent(x, fs, f0, options)
 %   t = (0:1/100:30)';  x = 2*sin(2*pi*1*t) + 0.5*sin(2*pi*2*t+0.7) + cumsum(randn(size(t)))*0.01;
 %   [K, info] = harmonicContent(x, 100, 1);    % K is 2
 %
-% See also: harmonicTemplate, shapeNoiseWrapper
+% USE: shapeNoiseWrapper and cetNoiseWrapper require K and have no default. Run this on your record first, look at info.ratio,
+% and pass the K you choose (README, "Choosing K for your data").
+%
+% See also: harmonicTemplate, shapeNoiseWrapper, cetNoiseWrapper
 
 arguments
     x double {mustBeReal, mustBeNonempty}

@@ -27,6 +27,8 @@ x = noiseXu(3000, 4.5, 1.0, 240);                  % alpha 4.5, unit SD, 240 Hz
 aI = estimateIRASA(x, 240, 1, 20, Prewhiten=k);    % IRASA on the same band, safe at steep alpha
 [s, info] = shapeNoise(myResidual, 240, []);      % surrogate of a measured residual (length info.L)
 [res, ~, ti] = harmonicTemplate(myPosition, 240, 1.2, 1);   % strip the periodic part (f0 1.2 Hz, K = 1), then shapeNoise(res, 240, [], AlphaBand="kinematic")
+K = harmonicContent(myPosition, 240, 1.2);           % how many harmonics stand above the noise? (look at its info.ratio too)
+[s2, i2] = shapeNoiseWrapper(myPosition, 240, F0=1.2, K=K, AlphaBand="kinematic");   % both steps in one call; K is required
 r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 ```
 
@@ -38,12 +40,29 @@ r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 | `shapeNoise` | Surrogate of a measured signal: random phases on the amplitude spectrum of its longest end-matched segment, kept only if its exponent matches | Base MATLAB (`Method="legacy"` carriers `"pinknoise"`/`"dsp"` need Signal Processing / DSP System Toolbox) |
 | `harmonicTemplate` | Windowed harmonic-regression template: removes the periodic part of a record (f0 given or estimated, K harmonics, window in cycles) and returns the residual `shapeNoise` takes; K and the window are yours to choose | Base MATLAB |
 | `harmonicContent` | Diagnostic: how many harmonics of f0 stand above the noise between them (content rule); a count to look at, not a selector of record | Base MATLAB |
-| `shapeNoiseWrapper`, `cetNoiseWrapper` | One call from a record to a surrogate (optional harmonic template, then `shapeNoise`); `cetNoiseWrapper` is the worked example on the monthly Central England Temperature series, not hand movement | Base MATLAB |
+| `shapeNoiseWrapper`, `cetNoiseWrapper` | One call from a record to a surrogate (optional harmonic template, then `shapeNoise`); K, the number of harmonics stripped, is required and has no default (see [Choosing K for your data](#choosing-k-for-your-data)); `cetNoiseWrapper` is the worked example on the monthly Central England Temperature series, not hand movement | Base MATLAB |
 | `estimateWhittleAlpha` | Spectral exponent over a band by prewhitened local Whittle; the one to use at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA (Wen & Liu 2016): spectral exponent and noise magnitude of the scale-free part, with oscillatory peaks removed | Signal Processing Toolbox; optional FieldTrip cross-check |
 | `checkSpectralKnee` | Lorentzian knee against a fixed power law (Preston, Smith & Voytek 2026) | Signal Processing Toolbox |
 
 Optional features (FieldTrip, `dsp.ColoredNoise`, `pinknoise` carriers) degrade visibly: a missing dependency gives a flagged "unavailable" result and a warning, never a silent substitute.
+
+## Choosing K for your data
+
+`shapeNoiseWrapper` (whenever it strips a template) and `cetNoiseWrapper` need K, the number of harmonics of f0 to remove. There is no default: a missing K is an error (`shapeNoiseWrapper:KRequired`, `cetNoiseWrapper:KRequired`). Too few harmonics leave movement in the "noise"; too many carve notches into the noise. `harmonicContent` is the per-record diagnostic for this choice. It is not a selector of record; an information-criterion selector is planned for v2.1.0.
+
+1. **Know f0.** Give it if you know it, or let `harmonicContent` estimate it from a band (`F0Band=[fLow fHigh]`).
+2. **Look at the harmonics.** `[Kc, info] = harmonicContent(x, fs, f0)`. `info.ratio(k)` is harmonic k's amplitude over the noise just beside it; Kc is the last harmonic, counting up from 1, at or above `Cut` (2). If `info.noHarmonic` is true, not even the fundamental stands out: Kc is 1 only by the floor, and you may not need a template at all.
+3. **Choose K and pass it.** Kc is a starting point. With many records, look at the spread of Kc rather than one record.
+4. **Check that your result does not depend on it.** Rerun with neighbouring K (for example Kc - 1, Kc, Kc + 1, using `harmonicTemplate` or the wrapper). If anything you report moves with K, report the ladder, not one value.
+
+Worked example, the bundled Central England Temperature series (tested in `tests/testWrappers.m`):
+
+```matlab
+cet = cetNoiseWrapper(LoadOnly=true, FirstYear=1900, LastYear=2025);   % monthly, fs = 12 per year
+[Kc, info] = harmonicContent(cet.value, 12, 1);   % f0 = 1 per year: ratios 73.8, 6.0, then 0.56 at the third harmonic, so Kc = 2
+n = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=Kc);
+```
 
 ## Which estimator to use
 

@@ -80,7 +80,7 @@
             {"name":"fs", "kind":"required", "type":["numeric", "positive", "scalar"]},
             {"name":"F0", "kind":"namevalue", "type":["numeric"]},
             {"name":"F0Band", "kind":"namevalue", "type":["numeric", "numel=2"]},
-            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]},
+            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"], "purpose":"Required when F0 or F0Band is given: harmonics to strip, no default (choose with harmonicContent)"},
             {"name":"Window", "kind":"namevalue", "type":["numeric", ">=2", "scalar"]},
             {"name":"Alpha", "kind":"namevalue", "type":["numeric", "row"]},
             {"name":"AlphaBand", "kind":"namevalue", "type":[["numeric", "numel=2"], ["choices={'kinematic'}"]]},
@@ -99,7 +99,7 @@
         [
             {"name":"FirstYear", "kind":"namevalue", "type":["numeric", "integer", "scalar"]},
             {"name":"LastYear", "kind":"namevalue", "type":["numeric"]},
-            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"]},
+            {"name":"K", "kind":"namevalue", "type":["numeric", "positive", "integer", "scalar"], "purpose":"Required unless LoadOnly: harmonics of the annual cycle to strip, no default (choose with harmonicContent)"},
             {"name":"Window", "kind":"namevalue", "type":["numeric", ">=2", "scalar"]},
             {"name":"AlphaBand", "kind":"namevalue", "type":["numeric", "numel=2"]},
             {"name":"File", "kind":"namevalue", "type":["char", "string"]},

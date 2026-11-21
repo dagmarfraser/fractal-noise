@@ -98,6 +98,8 @@ M = [
  mk("W1", "cetNoiseWrapper", "testWrappers", "no LastYear guard", "if lastYear > lastComplete, error(", "if false, error(")
  mk("W2", "cetNoiseWrapper", "testWrappers", "missing months not detected", "if any(R(:, 2:13) <= -99, ""all""), error(", "if false, error(")
  mk("W3", "shapeNoiseWrapper", "testWrappers", "template step never runs", "useTemplate = ~isempty(options.F0) || all(~isnan(options.F0Band));", "useTemplate = false;")
+ mk("W4", "shapeNoiseWrapper", "testWrappers", "default K restored (1)", "options.K double {mustBeScalarOrEmpty, mustBeInteger, mustBePositive} = []", "options.K double {mustBeScalarOrEmpty, mustBeInteger, mustBePositive} = 1")
+ mk("W5", "cetNoiseWrapper", "testWrappers", "default K restored (2)", "options.K double {mustBeScalarOrEmpty, mustBeInteger, mustBePositive} = []", "options.K double {mustBeScalarOrEmpty, mustBeInteger, mustBePositive} = 2")
  mk("S7", "shapeNoise", SB, "no-draw warning no longer names MaxDraw", "of the target in MaxDraw = %d tries", "of the target in %d tries")
  mk("B1", "summariseShapeNoiseBatch", SB, "flipped inequality in the test", "isLow = pValue < options.Level;", "isLow = pValue > options.Level;")
  mk("B2", "summariseShapeNoiseBatch", SB, "minimum number of channels exclusive", "tested = nChannels >= options.MinChannels;", "tested = nChannels > options.MinChannels;")

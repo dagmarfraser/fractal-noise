@@ -1,7 +1,7 @@
 function [n, info] = cetNoiseWrapper(options)
 %CETNOISEWRAPPER Surrogate noise for the Central England Temperature series: a worked example of a non-kinematic record.
 %
-%   [n, info] = cetNoiseWrapper()
+%   [n, info] = cetNoiseWrapper(K=2)
 %   [n, info] = cetNoiseWrapper(FirstYear=1900, LastYear=2020, K=2, AlphaBand=[0.5 5])
 %   cet = cetNoiseWrapper(LoadOnly=true)      % just the monthly series
 %
@@ -15,7 +15,9 @@ function [n, info] = cetNoiseWrapper(options)
 % INPUTS (all name-value):
 %   FirstYear - first calendar year (default 1659, the start of the series).
 %   LastYear  - last year (default [] = the last year with all twelve months present in the bundled file).
-%   K         - number of harmonics of the annual cycle stripped (default 2).
+%   K         - number of harmonics of the annual cycle stripped. REQUIRED unless LoadOnly is true; there is no default, and a
+%               missing K is an error ("cetNoiseWrapper:KRequired"). Choose it with harmonicContent: for 1900-2025,
+%               K = harmonicContent(cet.value, 12, 1) gives 2, with cet = cetNoiseWrapper(LoadOnly=true, FirstYear=1900, LastYear=2025).
 %   Window    - template window in years (cycles of f0; default 4).
 %   AlphaBand - [fLow fHigh] in cycles per year, 0 < fLow < fHigh < 6 (default [0.5 5]).
 %   File      - path to a HadCET monthly file in the Met Office format (e.g. a newer download of meantemp_monthly_totals.txt); default the bundled one.
@@ -34,12 +36,12 @@ function [n, info] = cetNoiseWrapper(options)
 % before 1772 is Manley 1974, Q.J.R. Meteorol. Soc. 100, 389-405; see the Met Office page for the full statement).
 % The series is revised each year: a newer file may differ from the bundled one.
 %
-% See also: shapeNoiseWrapper, harmonicTemplate, shapeNoise
+% See also: harmonicContent, shapeNoiseWrapper, harmonicTemplate, shapeNoise
 
 arguments
     options.FirstYear (1, 1) double {mustBeInteger} = 1659
     options.LastYear double {mustBeScalarOrEmpty} = []
-    options.K (1, 1) double {mustBeInteger, mustBePositive} = 2
+    options.K double {mustBeScalarOrEmpty, mustBeInteger, mustBePositive} = []
     options.Window (1, 1) double = 4
     options.AlphaBand (1, 2) double = [0.5 5]
     options.File (1, 1) string = ""
@@ -49,6 +51,10 @@ end
 cet = loadHadCET(options.File, options.FirstYear, options.LastYear);
 if options.LoadOnly
     n = cet;  info = [];  return
+end
+if isempty(options.K)
+    error("cetNoiseWrapper:KRequired", "K, the number of harmonics of the annual cycle to strip, is required; there is no default. " + ...
+        "Choose it with harmonicContent(cet.value, 12, 1) on cet = cetNoiseWrapper(LoadOnly=true, ...) and pass K=..., e.g. cetNoiseWrapper(K=2).");
 end
 [n, w] = shapeNoiseWrapper(cet.value, cet.fs, F0=1, K=options.K, Window=options.Window, ...
     AlphaBand=options.AlphaBand, ShapeArgs=options.ShapeArgs);
