@@ -49,6 +49,11 @@ An API audit (2026-11-17) found the defaults tied to the first use case (hand-mo
   marginal verdict). `runMutationChecks` gains 20 mutants for `noiseXu`, `estimateWhittleAlpha`, `estimateIRASA` and `checkSpectralKnee`
   (64 in all) and copies `validation/exactReference` so the exact-reference tests run on each mutant. The source-equivalence tests against
   the original research code pass (`validation/runSuiteWithLegacySource_v001.m`).
+- `estimateWhittleAlpha` help, 2026-11-21: why the Hann taper is kept (with k one too low the untapered estimate is 0.43-0.48 too low,
+  the tapered one within 0.03; the price is about 1.4 times the SD when k is right; `validation/compareHannTaper_v001.m`; Velasco 1999,
+  Hurvich, Lang & Soulier 2005), pinned by `testHannTaperProtectsAgainstUnderDifferencing`. New PEAKS section: a rhythmic peak inside the
+  band biases the estimate badly, usually without an error (a 10 Hz sine of 1% of the SD moves alpha 4.5 to -0.64), while `estimateIRASA`
+  with `Prewhiten` stays within 0.18 (`validation/checkWhittlePeak_v001.m`).
 - New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
 - `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
 - Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.

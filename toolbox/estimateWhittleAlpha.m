@@ -13,6 +13,12 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 %   2. Difference x k times, k = floor((alphaDFA + 1)/2) clamped to [0, MaxK] (or the K you pass). This removes
 %      the low-frequency power that would otherwise leak into the fitting band ("prewhitening").
 %   3. Hann-tapered periodogram of the differenced series; divide by |1 - exp(-i*lambda)|^(2k) to recolour.
+%      Why the taper: if step 1 picks k one too low, the differenced series is still non-stationary and an untapered
+%      periodogram leaks low-frequency power into the band. On exact references with k forced one too low the median bias is
+%      -0.43 to -0.48 without the taper and within 0.03 with it; the price is about 1.4 times the SD when k is right
+%      (validation/compareHannTaper_v001.m). This is the textbook trade: the untapered estimate is consistent only for d < 1
+%      (alpha < 2) and the cosine bell extends that to d < 1.5 at a variance factor of 35/18 (Velasco 1999, pp. 93-94, 97, 101);
+%      tapering and low-frequency trimming of differenced data are both needed under smooth trends (Hurvich, Lang & Soulier 2005).
 %   4. Local Whittle objective (Robinson 1995) for S(lambda) ~ G*lambda^(-alpha) over [fLow, fHigh] Hz,
 %      minimised with fminbnd over AlphaBounds. A minimum on a bound is an error, not an estimate.
 %   The target is the in-band slope of the true spectrum (what IRASA over the same band also targets).
@@ -39,6 +45,12 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 % ERRORS (fail loud): non-finite or constant input, fewer than 10 bins in the band, series too short for DFA,
 %   optimiser on a bound or not converged.
 %
+% PEAKS: a rhythmic peak inside the band biases this estimate badly, usually WITHOUT an error. On exact references with a
+%   10 Hz sine added (amplitude a fraction of the series' SD, band 1-20 Hz), the median moved from 2.52 to 2.45 at 1% and to
+%   1.01 at 10% for alpha 2.5, and from 4.52 to -0.64 at 1% for alpha 4.5; estimateIRASA with Prewhiten = k stayed within
+%   0.18 of the peak-free value (validation/checkWhittlePeak_v001.m). If the band may hold a peak (a harmonic left after the
+%   template, a tremor, mains hum), use estimateIRASA with Prewhiten, or remove the peak first.
+%
 % SAMPLING ERROR: for an untapered local Whittle estimate from m frequencies near zero, the estimate of H has asymptotic variance
 %   1/(4m) (Robinson 1995, Theorem 2), so SD(alpha) = 1/sqrt(m), because alpha = 2H - 1. Tapering inflates the variance (Hurvich & Chen 2000
 %   obtain 1.5/(4m) for their own complex-valued taper). For a full cosine-bell (Hann) taper on the undifferenced series, using all Fourier
@@ -52,7 +64,8 @@ function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, opti
 % Requires base MATLAB only. References: Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory
 % time series. Journal of Time Series Analysis, 21(2), 155-180. Robinson, P. M. (1995). Gaussian semiparametric estimation of long range
 % dependence. Annals of Statistics, 23(5), 1630-1661. Velasco, C. (1999). Gaussian semiparametric estimation of non-stationary time series.
-% Journal of Time Series Analysis, 20(1), 87-127. Kiyono, K. (2015). Establishing a direct connection between
+% Journal of Time Series Analysis, 20(1), 87-127. Hurvich, C., Lang, G., & Soulier, P. (2005). Estimation of long memory in the presence of
+% a smooth nonparametric trend. Journal of the American Statistical Association, 100(471), 853-871. Kiyono, K. (2015). Establishing a direct connection between
 % detrended fluctuation analysis and Fourier analysis. Physical Review E, 92, 042925.
 
 arguments

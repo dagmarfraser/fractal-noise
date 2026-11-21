@@ -122,5 +122,17 @@ classdef testEstimateWhittleAlpha < matlab.unittest.TestCase
             testCase.verifyGreaterThan(ratio, 1.2);
             testCase.verifyLessThan(ratio, 1.65);
         end
+
+        function testHannTaperProtectsAgainstUnderDifferencing(testCase)
+            % Known answer (validation/compareHannTaper_v001.m): with k forced one too low the Hann-tapered estimate stays within 0.03
+            % of the truth (median of 50); without the taper it is 0.43-0.48 too low. Here 20 series, tolerance 0.1.
+            testCase.assumeTrue(isfolder(testCase.ExactRefDir), "validation/exactReference not present; skipping.");
+            addpath(testCase.ExactRefDir);  testCase.addTeardown(@() rmpath(testCase.ExactRefDir));
+            for a = [2.5 4.5]
+                X = exactRefSeries_v001(3000, a, 20);  e = zeros(20, 1);
+                for r = 1:20, e(r) = estimateWhittleAlpha(X(:, r), 240, 1, 20, K=floor((a + 1) / 2) - 1); end
+                testCase.verifyEqual(median(e), a, "AbsTol", 0.1, sprintf("k one too low at alpha %.1f.", a));
+            end
+        end
     end
 end

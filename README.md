@@ -108,7 +108,7 @@ n = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=Kc);
 | Your signal | Use |
 |---|---|
 | Steep (alpha above about 3), or unknown | `estimateWhittleAlpha` |
-| Has rhythmic peaks you want ignored | `estimateIRASA`, with `Prewhiten=k` if it may be steep |
+| Has rhythmic peaks you want ignored (or may have: a harmonic left after the template, tremor, mains hum) | `estimateIRASA`, with `Prewhiten=k` if it may be steep. `estimateWhittleAlpha` is biased by an in-band peak, usually without an error |
 | Both | Run both and compare: `[~, k] = estimateWhittleAlpha(x, 240, 1, 20); estimateIRASA(x, 240, 1, 20, Prewhiten=k)` |
 
 - **`estimateWhittleAlpha`** differences the series k times (k from a DFA-3 pre-estimate), so low-frequency power cannot leak into the fitting band, then fits a local Whittle likelihood over your band. On exact reference series it is within 0.08 of the in-band slope for alpha -1.5 to 9.5, and it errors rather than return a number at its search bounds (`validation/rangeEvidence_v002.md`).
@@ -190,7 +190,7 @@ Tests cover known-alpha recovery, peak removal, surrogate fidelity at steep alph
 The bundled example series is the Hadley Centre Central England Temperature (HadCET) dataset. Contains public sector information licensed under the Open Government Licence v3.0. Source: Met Office Hadley Centre, www.metoffice.gov.uk/hadobs. Cite Parker, Legg & Folland (1992), Int. J. Climatol. 12, 317-342.
 
 - `noiseXu`: Xu, C. (2019). An easy algorithm to generate colored noise sequences. *The Astronomical Journal*, 157(3), 127.
-- `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range dependence. *Annals of Statistics*, 23(5), 1630-1661; Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory time series. *Journal of Time Series Analysis*, 21(2), 155-180; Velasco, C. (1999). Gaussian semiparametric estimation of non-stationary time series. *Journal of Time Series Analysis*, 20(1), 87-127; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92, 042925.
+- `estimateWhittleAlpha`: Robinson, P. M. (1995). Gaussian semiparametric estimation of long range dependence. *Annals of Statistics*, 23(5), 1630-1661; Hurvich, C. M., & Chen, W. W. (2000). An efficient taper for potentially overdifferenced long-memory time series. *Journal of Time Series Analysis*, 21(2), 155-180; Velasco, C. (1999). Gaussian semiparametric estimation of non-stationary time series. *Journal of Time Series Analysis*, 20(1), 87-127; Hurvich, C., Lang, G., & Soulier, P. (2005). Estimation of long memory in the presence of a smooth nonparametric trend. *Journal of the American Statistical Association*, 100(471), 853-871; DFA order limit from Kiyono, K. (2015), *Physical Review E*, 92, 042925.
 - `estimateIRASA`: Wen, H., & Liu, Z. (2016). Separating fractal and oscillatory components in the power spectrum of neurophysiological signal. *Brain Topography*, 29(1), 13-26.
 - `checkSpectralKnee`: Preston, M., Smith, S., & Voytek, B. (2026). *Nature Human Behaviour*.
 - `external/fftnoise/fftnoise.m`: (c) Aslak Grinsted 2011, BSD 2-clause, bundled unmodified.
