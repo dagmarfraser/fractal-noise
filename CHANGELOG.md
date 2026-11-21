@@ -8,7 +8,211 @@ session history, which is not this toolbox's situation. Each function's
 docstring states which specific internal vintage it was extracted from, so
 that history is not lost, just relocated to prose rather than the filename.
 
-## v1.2.0 -- unreleased (branch joss-v2)
+## v2.0.0 -- unreleased (branch v2.0.0)
+
+### Generality: `shapeNoise` for data that are not hand movement, and `harmonicTemplate`
+
+An API audit (2026-11-17) found the defaults tied to the first use case (hand-movement residuals, Hz).
+
+- `shapeNoise` `AlphaBand`: no longer a silent `[1 20]` Hz. Not giving it uses the kinematic band `[1, min(20, fs/2 - 1)]` and warns
+  (`shapeNoise:defaultAlphaBand`); `AlphaBand="kinematic"` selects the same band silently; any other band is `[fLow fHigh]` in the units of `fs`
+  and must satisfy `0 < fLow < fHigh < fs/2` (`shapeNoise:alphaBand`). `fs` may be in any consistent unit of cycles per unit time (monthly data: `fs = 12`).
+- `shapeNoise` `CheckUncovered` (default `true`): `false` switches off the zero-tail error (`shapeNoise:zeroTail`) for records where long exact-zero stretches are genuine.
+- New `harmonicTemplate(x, fs, f0, K)`: the windowed harmonic-regression template (constant, trend and K harmonics of f0 in Hann-weighted windows of `Window` cycles,
+  overlap-add, end-anchored final window) whose residual `shapeNoise` takes. f0 is given or estimated within `F0Band`. A record shorter than one window is an error
+  (`harmonicTemplate:tooShort`), not a zero residual. It is a template, not a selector: K and Window are the caller's decision; selection rules and diagnostics are planned for v2.1.0.
+- New `shapeNoiseWrapper` (optional `harmonicTemplate`, then `shapeNoise`, in one call) and `cetNoiseWrapper`, a worked example on the monthly Central England Temperature series (fs = 12 per year, annual cycle removed, explicit band). The HadCET file is bundled in `toolbox/examples/data` under the Open Government Licence v3.0 with the Met Office attribution and the Parker, Legg & Folland (1992) citation; `testWrappers` has 15 tests.
+- K is required (2026-11-21). `shapeNoiseWrapper` (whenever F0 or F0Band is given) and `cetNoiseWrapper` (unless `LoadOnly`) no longer default
+  K, the number of harmonics stripped (it was 1 and 2). A missing K is an error, `shapeNoiseWrapper:KRequired` or `cetNoiseWrapper:KRequired`,
+  whose message points to `harmonicContent`; there is no default and no warning. `harmonicContent` stays the per-record diagnostic, and the README
+  has a short workflow, "Choosing K for your data" (worked on HadCET 1900-2025: K = 2). The information-criterion selector stays planned for v2.1.0.
+  Known-answer and fail-loud tests in `testWrappers`; two new mutants (W4, W5) restore a default K, and both are killed.
+- `shapeNoise` `MinLength` default is 120 (was 32), 2026-11-21. Shorter segments were often too short for `estimateWhittleAlpha`. Rerunning
+  every validation grid with 120 (`validation/rangeEvidence_v002.md`; v001 kept): the too-short `segmentAlpha` failures disappear and
+  those series end in `noSegment` instead; failure rates rise by at most 2.6 percentage points (none up to alpha 2.25); surrogate
+  quality and real-residual acceptance (97.0% of 7948 axes) are unchanged. A record shorter than 120 samples is now an error
+  (`shapeNoise:short`); pass `MinLength` lower only if you check the exponent yourself. Test `testDefaultMinLengthIs120`; mutant S8.
+- `estimateIRASA` accuracy re-measured under the default `Resampling="irasa"` (2026-11-21, `validation/irasaOptions/checkIRASAOptions_v002`,
+  legacy run on the same series). The help RANGE now gives these figures: on peak-free noise the default and legacy agree within 0.19;
+  with `Prewhiten` the worst bias is +/-0.29 (was +/-0.23 under legacy); the advice is unchanged.
+- New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
+- `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
+- Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.
+- Help text: the measured range of `shapeNoise` on exact references (see Range below and `validation/rangeEvidence_v001.md`), independent channel phases, and a search cost that can reach O(N^2).
+- New `summariseShapeNoiseBatch`: acceptance share, per-draw acceptance and tries across many `shapeNoise` calls. It warns (`shapeNoise:lowAcceptance`) only when acceptance is significantly below a 95% margin (exact one-sided binomial, level 0.01, at least 90 channels), and never errors. The 95% is a conventional margin chosen after the real-data acceptance results were seen; it is not an independent derivation. The 99% design standard from exact references is reported alongside for information and does not warn. The `shapeNoise:noAcceptedDraw` warning now names `AlphaTol` and `MaxDraw`.
+- Tests: `testHarmonicTemplate` (10, including parity with the project runner's template for two axes) and `testShapeNoiseGenericity` (5).
+
+### Breaking: `estimateIRASA` now performs IRASA
+
+**Bug.** Up to v1.2.0 the resampled copies were labelled with their true
+rates (`fs*h`, `fs/h`) and interpolated back onto the original Hz axis.
+Every copy then estimated the same spectrum at the same frequencies, so
+an oscillatory peak never moved and the median over `Hset` removed
+nothing. The result was a `pmtm` (or Welch) slope fit. On a 10 Hz sine
+over alpha-1.5 noise the peak stood 14.7 dB above its neighbours in
+`pFractal`, against 14.9 dB in the raw spectrum
+(`review/checkIRASAPeakRemoval_v001.m`, R2025b). The noise-only tests
+could not see it, because on peak-free noise the exponent is unaffected.
+
+**Fix.** The default, `Resampling="irasa"`, is the Wen & Liu (2016)
+method: resampled copies are analysed at the nominal rate `fs`, peaks
+move to `f0*h` and `f0/h`, and the median rejects them (same signal:
+1.5 dB with `pmtm`, 1.4 dB with Welch).
+
+**What changes for callers**
+
+- Exponents on signals with peaks differ from 1.x, and are now correct.
+  On peak-free signals they agree with 1.x.
+- The band must satisfy `fHigh*max(Hset) < fs/2`; otherwise the call
+  errors (`estimateIRASA:irasaBand`).
+- `pFractal` is NaN from `fs/(2*max(Hset))` upward, so `sigmaEst` covers
+  a narrower range and is smaller.
+- With `Prewhiten=k`, each `h` column is recoloured by its own gain
+  before the median.
+- `Resampling="legacy"` reproduces 1.x bit for bit and warns on every
+  call (`estimateIRASA:legacyResampling`). It is not IRASA.
+
+### Breaking: `shapeNoise` builds an end-matched random-phase surrogate
+
+**Problem.** `shapeNoise` copied `abs(fft(resid))` onto the carrier's
+phase. For a steep series whose ends do not meet, that magnitude is
+mostly end-mismatch leakage (f^-2) above the lowest bins (Schreiber &
+Schmitz 2000, Sec. 4.5). The surrogate stayed steep only when the
+carrier's own end jump supplied matching phases. With the `"xu"`
+carrier, 3 to 25% of surrogates between alpha 3 and 6 came out more
+than 0.5 shallower than `resid` (fs 133, N 3000). At alpha 4, carriers
+in the bottom third for end mismatch gave 58% shallow surrogates and the
+rest 1% or none (`validation/checkShapeNoiseMechanism_v001.m`). Medians
+were unaffected, which is why mean-based checks did not show it. On real
+template-subtracted movement residuals the same construction left the
+surrogate's filtered velocity and curvature noise 14-30% short of the
+residual's for two of five datasets.
+
+A differenced-domain swap tried on this branch (`Prewhiten`) fixed the
+exponent on synthetic noise but failed on real residuals: the surrogate
+was 98-100% integration drift and its derivative noise 4-13% of the
+residual's. It was never released and has been removed.
+
+**Fix.** The default, `Method="endMatched"`:
+
+1. Find the longest length L at which every channel has a segment whose
+   wrap-around step, and each wrapped second difference, is no larger
+   than the largest expected among the segment's own steps:
+   q(n) = chi2inv(1 - 1/n, 1), about 2 ln n, times the mean squared step
+   (`SegmentRule="detect"`, no tolerance to choose; the wrap then adds at
+   most q(L-1)/(L-1) of the first-difference energy, about 1.4% at
+   L 1000). `SegmentRule="budget"` (e.g. `SegmentBudget=0.01`) and
+   `"tol"` (`FairShareTol`, wrap <= Tol x mean terms) are options. These
+   are the rules of the pre-registration's `endToEndSegment_v006`.
+   Segment measures from Schreiber & Schmitz 2000, Eqs. 16-17;
+   longest-first search after Nakamura, Small & Hirata 2006. Each channel takes its own best
+   segment of that length.
+2. Put uniformly random phases on that segment's amplitude spectrum,
+   remove the mean, scale to its std.
+3. Accept a draw when its `estimateWhittleAlpha` exponent is within
+   `AlphaTol` (0.3) of the target; up to `MaxDraw` (20) draws.
+
+On real residuals (Fraser, Hickman, Cook) the surrogate's filtered
+velocity and acceleration noise is 1.00-1.02 of the residual's. On
+synthetic noise (`validation/checkShapeNoiseEndMatched_v001.m`):
+100 noiseXu references per cell, alpha 0.5-6, fs 133 N 3000 and fs 240
+N 1000. Legacy: 1-27% of surrogates more than 0.5 shallower than the
+reference at alpha 3-6 (27% at alpha 3.5, N 3000; 22% at alpha 4,
+N 1000). End-matched (default rule): all but one built surrogate was
+accepted within 20 draws, first- and second-difference noise 1.00 of the segment's
+(median), none shallow (the selection step guarantees the exponent, so
+that column is a check of the code, not of the method). Median L/N 0.97
+at alpha 3, 0.84 at 5 and 0.70 at 6 (N 3000); 0.91, 0.56 and 0.52 at
+N 1000. One reference in 100 at alpha 3.5, N 1000, had no accepted draw.
+
+**Range.** Measured against known truth on exact references with no
+low-frequency break (fs 120, 133, 240, 300 Hz; N 1000 and 3000; band 1-20
+Hz; 200 series per cell; default `MinLength` 120; `validation/rangeEvidence_v002.md`). Share of
+series that fail: at most 1.3% for alpha -0.75 to 2.5 (3.5% in the worst
+configuration), 8% at 2.75, 25-51% from 2.95 to 4, 69-81% at 4.25 to 4.5,
+92% at 4.75 and 96-100% from 4.95 to 6.75. These are errors
+(`shapeNoise:noSegment`, or `shapeNoise:segmentAlpha` if a segment's exponent
+cannot be estimated), not quietly shortened or substituted.
+Series with a low-frequency break or leak reach further: noiseXu with Phi
+0.99 is accepted in at least 98% of series up to an in-band slope of 4.5,
+and real movement residuals after stripping K = 1 harmonic in 97.0% of
+7948 axes (93.7% above alpha 5); against `MinLength` 32 no axis moved between accepted and failed.
+
+**What changes for callers**
+
+- The output has L rows, not `numel(resid)`; `info.L` and `info.Lfrac`
+  say how long. Whatever you add it to must have length L.
+- `resid` may be N-by-C (e.g. two movement axes); all channels share L.
+- `alpha` is the selection target. `[]` uses each segment's own
+  `estimateWhittleAlpha` exponent over `AlphaBand` (default 1-20 Hz).
+- New second output `info` (segment, wrap terms, target, draws,
+  accepted, achieved gap, estimator failures).
+- A channel with no accepted draw is NaN, with the warning
+  `shapeNoise:noAcceptedDraw`.
+- Estimator failures during selection count as rejected draws and are
+  reported (`info.nEstFail`, warning `shapeNoise:estimateFailed`).
+- A run of three or more exact zeros at either end of `resid` is an
+  error (`shapeNoise:zeroTail`): an uncovered template tail would
+  otherwise be taken as part of the segment. Pass only the covered
+  residual.
+- `PhaseSource` applies only to `Method="legacy"`.
+- `Method="legacy"` reproduces 1.x, and the source `shapeXu_local`, bit
+  for bit, and warns on every call (`shapeNoise:legacyConstruction`).
+
+### `checkSpectralKnee`
+
+- New `Resampling` option, passed through to `estimateIRASA`; default
+  `"irasa"`.
+- The automatic upper band edge is now `0.95*fs/(2*max(Hset))`
+  (previously `fs/2.2`, kept only under `"legacy"`).
+
+### Tests
+
+New: default is `"irasa"`; `"legacy"` warns; peak removed under the
+default and kept under `"legacy"` (both PSDs); agreement on peak-free
+noise; steep break-free noise with `Prewhiten`; the NaN mask; the band
+error; three `checkSpectralKnee` tests for the new option; `shapeNoise`
+end-matched tests (same output as the research source for the same
+seed; exponent and first/second-difference noise held at alpha 4; segment
+bookkeeping; two channels share L; reproducible with a seed; zero tail,
+constant channel, alpha size and PhaseSource errors; no accepted draw
+gives NaN and warns; legacy warns). Tests that pin
+1.x numbers call `"legacy"` explicitly.
+
+### Documentation
+
+`doc/WhyHomebrewIRASA` rewritten: its earlier argument rested on three
+estimators agreeing, two of which were the same computation, so the
+"verified alpha -2 to 6" claim is withdrawn. `doc/GettingStarted` updated
+(links point to the shipped .m pages; gains `estimateWhittleAlpha`).
+README rewritten to lead with what the toolbox is for, with an
+"Upgrading from 1.x" section. `examples/CompareFftnoiseVsShapedXu` gains
+reference and Whittle columns, prints line breaks, and compares
+`fftnoise` with the end-matched surrogate. `examples/CompareNoiseGenerators`
+compares the end-matched and legacy constructions.
+`validation/checkShapeNoiseEndMatched_v001.m` replaces the legacy-only
+alpha check.
+
+### Test infrastructure
+
+- Source-equivalence tests take the research source from the environment
+  variable `FRACTALNOISE_LEGACY_SRC` (FieldTrip from
+  `FRACTALNOISE_FIELDTRIP`) instead of a hard-coded personal path. Set but
+  missing is a fatal error; unset is logged and the filter message names
+  the variable; `FRACTALNOISE_REQUIRE_LEGACY=1` makes an unset source fatal.
+- Validation scripts pin `estimateIRASA` to `Resampling="legacy"`, the
+  method their recorded results came from.
+- `functionSignatures.json` passes `validateFunctionSignaturesJSON` (10
+  messages fixed).
+
+### Project and JOSS housekeeping
+
+- `CONTRIBUTING.md`, a support section in the README, `CITATION.cff` and
+  `.zenodo.json` (with ORCID); Zenodo archives each GitHub release.
+- Continuous integration: GitHub Actions runs the full suite on MATLAB
+  R2025b with the Signal Processing Toolbox.
+
+## v1.2.0 -- 2026-11-09
 
 ### New: `estimateWhittleAlpha`
 

@@ -1,78 +1,61 @@
-%[text] # Why `estimateIRASA` Is a Homebrew Implementation
-%[text] `estimateIRASA` ships its own implementation of the IRASA algorithm (resampling-median spectral estimation, Wen & Liu 2016) rather than simply wrapping FieldTrip's `ft_freqanalysis(method="irasa")`. This document explains why, using the validation work that established the verified alpha range stated in `estimateIRASA`'s docstring.
-%[text] **tl;dr:** three mechanistically independent estimators agree closely for alpha in \[-2, 6\]. At alpha=7 they diverge -- not because any one estimator is broken, but because an information limit is being hit at typical trial lengths. `estimateIRASA` is verified for alpha in \[-2, 6\], not the full \[-2, 7\] range over which the noise generator `noiseXu` is merely **numerically stable**. Those are two different claims and this toolbox does not conflate them.
-%[text] ## The circularity problem
-%[text] Suppose you want to validate a noise generator's numerical stability by checking that IRASA recovers the target alpha you asked it to generate. That's a reasonable check -- until you also want to validate the IRASA **estimator** itself, and the only tool at hand is IRASA. If generator validation and estimator validation both route through the same IRASA implementation, close agreement at extreme alpha risks being two correlated errors cancelling out, not genuine confirmation of either.
-%[text] Homebrew-vs-FieldTrip agreement alone does not resolve this either. Both are IRASA variants built on the same resampling-median mechanism and could in principle share a blind spot at the same operating point.
-%[text] **Resolution:** bring in a third, mechanistically independent estimator -- a direct pmtm log-log slope fit with no resampling step at all -- and test whether all three converge on known synthetic targets.
-%[text] ## Three estimators
-estimators = table( ...
-    ["HB"; "FT"; "PM"], ...
-    ["iraAlphaSigma_v003 / estimateIRASA"; "ft_freqanalysis(method=""irasa"")"; "direct pmtm"], ...
-    ["pmtm, whole-signal, resampling-median (homebrew)"; "Hanning-windowed, resampling-median (FieldTrip)"; "single PSD, log-log OLS slope, NO resampling step"], ...
-    VariableNames=["Code", "Implementation", "Mechanism"]);
-disp(estimators)
+%[text] # `estimateIRASA`: Own Implementation, and What Changed in v2.0.0
+%[text] `estimateIRASA` implements IRASA (Wen and Liu 2016) itself instead of wrapping FieldTrip's `ft_freqanalysis(method="irasa")`. This page says why, what was wrong with it up to v1.2.0, and what has and has not been checked since.
+%[text] ## Why not just call FieldTrip
+%[text] - **No dependency.** The function needs only Signal Processing Toolbox. FieldTrip stays an optional cross-check (`CompareFieldTrip=true`).
+%[text] - **Choice of spectrum.** Multitaper (`PSD="pmtm"`, default) or Welch (`PSD="welch"`).
+%[text] - **Steep spectra.** `Prewhiten=k` differences the series before IRASA and recolours afterwards, which removes the leakage that biases any whole-record spectrum once alpha passes about 3. FieldTrip has no equivalent. \
+%[text] ## The bug in v1.2.0 and earlier
+%[text] IRASA resamples the signal by a set of factors h and takes the spectrum of every copy **as if it were still sampled at fs**. A scale-free background keeps its shape under that relabelling, while a rhythmic peak at f0 moves to f0\*h and f0/h. The median over h then rejects the peak.
+%[text] Up to v1.2.0 this function gave each copy its true rate (fs\*h, fs/h) and interpolated back to the original frequency axis. Every copy then estimated the same spectrum at the same frequencies. Peaks never moved, the median had nothing to reject, and the returned exponent was a plain spectral slope. The research code it was extracted from had the same form from its first version.
+%[text] It went unnoticed because every test used peak-free noise, where correct IRASA, the old code and a direct slope fit all agree.
+%[text] ## What that does to the earlier three-way validation
+%[text] Earlier versions of this page reported a three-way check: this function (HB), FieldTrip (FT) and a direct `pmtm` slope with no resampling (PM), on `noiseXu` output for alpha from -2 to 7. HB and PM agreed within 0.005 up to alpha 4, and that was read as independent confirmation.
+%[text] It was not independent. With the old resampling, HB **was** PM apart from interpolation, so the agreement was close to an identity. Two further cautions apply to those numbers:
+%[text] - They were measured on default `noiseXu` output, which has a low-frequency break (see the `noiseXu` help). The break hides leakage that appears on break-free spectra.
+%[text] - The "verified for alpha in \[-2, 6\]" statement that rested on them is withdrawn. \
+%[text] The table is kept in the pre-reg project (`docs/README_IRASAThreeWayAgreement_v001.md`) as a record of the legacy code, and can be reproduced with `Resampling="legacy"`.
+%[text] ## What has been checked for v2.0.0
+%[text] All on `noiseXu` output, N = 3000, fs = 240 Hz, band 1-20 Hz, in the toolbox test suite (`tests/testEstimateIRASA.m`):
+checked = table( ...
+    ["10 Hz sine (0.5 SD) on alpha 1.5 noise"; "Peak-free noise, alpha 2"; "Break-free noise (Phi = 1), alpha 4.5, Prewhiten = 2"; "Band reaching above fs/(2*max(Hset))"], ...
+    ["Peak left in pFractal: about 1.5 dB (legacy: 14.7 dB; raw spectrum: 14.9 dB)"; "Median within 0.2 of 2, and within 0.15 of legacy"; "Median within 0.3 of 4.5, pmtm and Welch"; "Error, not a silent answer"], ...
+    VariableNames=["Signal", "Result"]);
+disp(checked)
 %%
-%[text] PM shares HB's PSD estimator (pmtm, time-bandwidth product 4, same frequency resolution) and differs only in skipping the up/downsample- and-median step -- isolating that step as the variable under test.
-%[text] ## Historical validation result
-%[text] N=3000, fs=120 Hz, 15 repetitions per alpha, alpha in \[-2, 7\]. Bias is mean(alpha\_recovered - alpha\_true); spread3 is the range across all three estimators' mean bias at that alpha.
-alphaTrue = (-2:7)';
-hbBias = [0.053; 0.035; 0.014; -0.028; -0.077; -0.042; -0.036; -0.005; -0.114; -0.638];
-ftBias = [0.086; 0.050; 0.001; -0.052; -0.117; -0.142; -0.154; -0.296; -0.433; -0.674];
-pmBias = [0.050; 0.034; 0.013; -0.029; -0.078; -0.041; -0.031; 0.032; 0.014; -0.300];
-% spread3 and gapHBPM are taken verbatim from the original source table
-% (docs/README_IRASAThreeWayAgreement_v001.md), NOT recomputed from the
-% rounded bias figures above -- the original derived columns were
-% computed from full-precision underlying data before rounding to 3
-% decimals for display, so max(bias)-min(bias) on the rounded values
-% above does not reproduce them exactly (e.g. alpha=7: recomputing from
-% rounded bias gives spread3=0.374, not the source's reported 0.458).
-spread3 = [0.043; 0.037; 0.023; 0.038; 0.044; 0.101; 0.123; 0.327; 0.447; 0.458];
-gapHBPM = [0.003; 0.001; 0.001; 0.001; 0.001; 0.001; 0.005; 0.037; 0.128; 0.338];
+%[text] **Not yet re-measured under the new default:** bias across the full alpha range, and the alpha 7 behaviour. Until the validation grid is rerun (`validation/`), treat the list above as the whole of the evidence. At steep alpha use `estimateWhittleAlpha`, or pass its `kUsed` as `Prewhiten`.
+%[text] ## See it remove a peak
+%[text] The same signal through the default and through the legacy path. Peak excess is the largest value of `pFractal` in 9.5-10.5 Hz over its median in the neighbouring bands, in dB.
+fs = 240;  N = 3000;  t = (0:N-1)' / fs;
+rng(20261109);
+x = noiseXu(N, 1.5, 1, fs) + 0.5 * sin(2*pi*10*t + 2*pi*rand);
+peakDb = @(f, p) 10 * log10(max(p(f >= 9.5 & f <= 10.5)) / median(p((f >= 7 & f <= 8.5) | (f >= 12 & f <= 14)), 'omitnan'));
 
-historicalResults = table(alphaTrue, hbBias, ftBias, pmBias, spread3, gapHBPM, ...
-    VariableNames=["alpha", "HB_bias", "FT_bias", "PM_bias", "spread3", "gapHBPM"]);
-disp(historicalResults)
+[aNew, ~, pNew, f] = estimateIRASA(x, fs, 1, 20);
+warnState = warning('off', 'estimateIRASA:legacyResampling');   % demonstration only: the warning is expected here
+[aOld, ~, pOld] = estimateIRASA(x, fs, 1, 20, Resampling="legacy");
+warning(warnState);
+fprintf("default: alpha %.2f, 10 Hz peak %.1f dB\n", aNew, peakDb(f, pNew));
+fprintf("legacy : alpha %.2f, 10 Hz peak %.1f dB\n", aOld, peakDb(f, pOld));
+
+figure;  loglog(f, pOld, f, pNew, 'LineWidth', 1.2);  xlim([1 40]);  grid on;
+xlabel('Frequency (Hz)');  ylabel('pFractal');  legend('legacy (v1.x)', 'default (v2.0.0)');
+title('A 10 Hz rhythm on 1/f^{1.5} noise');
 %%
-%[text] **Aggregate:** HB mean|bias|=0.104, FT mean|bias|=0.200, PM mean|bias|=0.062.
-%[text] ## Interpretation
-%[text] **alpha in \[-2, 4\]:** `HB-PM` \<= 0.005 throughout. Two mechanistically independent estimators (no shared resampling step) agree almost exactly; FieldTrip alone is the outlier, consistent with its coarser frequency resolution. This is genuine independent-method confirmation of generator fidelity, not self-referential agreement between two variants of the same algorithm.
-%[text] **alpha = 5, 6:** `HB-PM` grows (0.037, 0.128) but stays well under `HB-FT` or `PM-FT`. The "FT is the outlier; HB/PM agree" pattern still holds -- `spread3` alone crosses a naive flag threshold here, which would read as "unverifiable" in isolation, but the pairwise breakdown shows this is still well-supported, driven by FieldTrip specifically rather than genuine three-way disagreement.
-%[text] **alpha = 7:** the pattern inverts. `HB-FT` becomes **smaller** than `HB-PM` -- HB and FT drift toward each other while PM diverges from both, and PM itself picks up substantial bias and inflated variance. This is genuine three-way breakdown, most likely reflecting an information limit at N=3000 (too few independent low-frequency samples in-band to constrain a slope this steep) rather than an algorithm-specific artefact.
-%[text] ## Verdict
-%[text] **Verifiable range: alpha in \[-2, 6\].** Independent-method agreement (HB vs PM) supports estimator fidelity throughout this range, including alpha=5-6 where `spread3` alone would flag concern.
-%[text] **alpha = 7 is not independently verifiable** with these three tools at this trial length. A noise generator being **numerically stable** at alpha=7 (no NaN/Inf, well-conditioned output -- see `noiseXu`'s docstring) is a different claim from an estimator being able to **measure** alpha=7 back out reliably. Do not conflate the two.
-%[text] ## Live demonstration
-%[text] The table above is a historical result (originally run against PowerLawSimulationPreReg's noise generator and estimator). Since `noiseXu` and `estimateIRASA` reproduce that exact generator and estimator bit-for-bit, the same pattern is reproducible live, right here, using only this toolbox's public functions.
-N = 3000;
-fs = 120;
-fLow = 1.0;
-fHigh = 30.0;
-sigma = 5.0;
-demoAlphas = [3, 6, 7];
-
-for a = demoAlphas
-    rng(500 + a);
-    x = noiseXu(N, a, sigma, fs);
-    [alphaHB, ~, ~, ~, ftInfo] = estimateIRASA(x, fs, fLow, fHigh, CompareFieldTrip=true);
-    if ftInfo.available
-        fprintf("alpha_true=%d  HB=%.3f  FT=%.3f  gap(HB,FT)=%.3f\n", ...
-            a, alphaHB, ftInfo.alphaFT, ftInfo.gapHBFT);
-    else
-        fprintf("alpha_true=%d  HB=%.3f  (FieldTrip not available: %s)\n", ...
-            a, alphaHB, ftInfo.message);
-    end
+%[text] ## A second opinion from FieldTrip
+%[text] FieldTrip's IRASA uses a Hanning-windowed FFT in place of multitaper but the same resampling-median step, so it is now a like-for-like comparison. A missing FieldTrip gives a flagged result and a warning, never a substitute.
+[aHB, ~, ~, ~, ftInfo] = estimateIRASA(x, fs, 1, 20, CompareFieldTrip=true);
+if ftInfo.available
+    fprintf("estimateIRASA %.3f, FieldTrip %.3f, gap %.3f\n", aHB, ftInfo.alphaFT, ftInfo.gapHBFT);
+else
+    fprintf("estimateIRASA %.3f (FieldTrip not available: %s)\n", aHB, ftInfo.message);
 end
 %%
-%[text] At alpha=3 the HB/FT gap should be small; by alpha=6-7 it typically widens, echoing the historical pattern above. This is a single realisation per alpha (not averaged over repetitions like the historical table), so don't over-read small numerical differences from the table -- the point is the qualitative pattern, not exact reproduction of specific bias values.
-%[text] ## What this means for using this toolbox
-%[text] - For alpha in \[-2, 6\], trust `estimateIRASA`'s homebrew estimate on its own; it's the cheapest of the three estimators and has the lowest aggregate bias.
-%[text] - Requesting `CompareFieldTrip=true` gives you a second opinion for free (when FieldTrip is installed) -- useful as a sanity check on any individual analysis, not just at the edges of the verified range.
-%[text] - Outside alpha in \[-2, 6\], treat any single estimate -- homebrew or otherwise -- as unverified. Consider it a stress-test result, not a ground-truth measurement. \
-%[text] ## Cross-references
-%[text] - `estimateIRASA.m` docstring -- states this same verified range
-%[text] - `noiseXu.m` docstring -- states the separate, wider generator stability range and why it should not be conflated with this one
-%[text] - Original validation: PowerLawSimulationPreReg  `docs/README_IRASAThreeWayAgreement_v001.md` and Finding \#100 \
+%[text] ## Using it
+%[text] - The band must satisfy `fHigh*max(Hset) < fs/2` (with the default `Hset`, `fHigh < fs/3.8`). `pFractal` is NaN above `fs/(2*max(Hset))`.
+%[text] - `ComparePMTM=true` returns the direct slope with no resampling. A gap between it and `alphaEst` now means peaks were present and removed.
+%[text] - `Resampling="legacy"` exists only to reproduce results from v1.2.0 and earlier. It warns on every call. \
+%[text] ## References
+%[text] Wen, H., and Liu, Z. (2016). Separating fractal and oscillatory components in the power spectrum of neurophysiological signal. *Brain Topography*, 29(1), 13-26.
 
 %[appendix]{"version":"1.0"}
 %---

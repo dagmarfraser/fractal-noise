@@ -43,7 +43,13 @@ function result = checkSpectralKnee(resid, fs, options)
 %   WideBandLow - Name-value. Lower bound of the wide band used for the
 %                 knee search itself. Default 0.15.
 %   FitBandHigh - Name-value. Upper bound of both bands, Hz. Default 0,
-%                 meaning auto = fs/2.2.
+%                 meaning auto: 0.95*fs/(2*max(Hset)), so that the range
+%                 IRASA resamples over stays below Nyquist (fs/2.2 with
+%                 Resampling="legacy", as in the source script).
+%   Resampling  - Name-value, "irasa" (default) or "legacy", passed to
+%                 estimateIRASA. "legacy" is the pre-2.0.0 spectrum, which
+%                 does not remove oscillatory peaks; it is kept only to
+%                 reproduce earlier results, and warns.
 %   Hset        - Name-value. IRASA resampling ratio set, passed through
 %                 to estimateIRASA. Default 1.1:0.05:1.9.
 %   ExtraKneeStarts - Name-value. Additional knee-frequency (Hz) starting
@@ -94,6 +100,7 @@ arguments
     options.FitBandHigh (1, 1) double {mustBeNonnegative} = 0
     options.Hset (1, :) double = 1.1:0.05:1.9
     options.ExtraKneeStarts (1, :) double = []
+    options.Resampling (1, 1) string {mustBeMember(options.Resampling, ["irasa", "legacy"])} = "irasa"
 end
 
 sig = resid - mean(resid);
@@ -106,13 +113,15 @@ end
 
 if options.FitBandHigh > 0
     fHigh = options.FitBandHigh;
-else
+elseif options.Resampling == "legacy"
     fHigh = fs / 2.2;
+else
+    fHigh = 0.95 * fs / (2 * max(options.Hset));
 end
 fBandLow = options.FitBandLow;
 fWideLow = options.WideBandLow;
 
-[~, ~, pFrac, fVec] = estimateIRASA(sig, fs, fWideLow, fHigh, Hset=options.Hset);
+[~, ~, pFrac, fVec] = estimateIRASA(sig, fs, fWideLow, fHigh, Hset=options.Hset, Resampling=options.Resampling);
 fVec = fVec(:);
 pFrac = pFrac(:);
 

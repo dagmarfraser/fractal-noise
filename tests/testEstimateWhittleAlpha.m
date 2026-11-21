@@ -7,7 +7,6 @@ classdef testEstimateWhittleAlpha < matlab.unittest.TestCase
 % toolbox-only-path check for this function (kept here so testToolboxSelfContained is not edited).
 
     properties (Constant)
-        LegacyFunctionsDir = "/Users/d.s.fraser/Library/CloudStorage/Dropbox/Brain2Bee/PowerLawSimulationPreReg/src/functions"
         ToolboxDir = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox")
         ExactRefDir = fullfile(fileparts(mfilename("fullpath")), "..", "validation", "exactReference")
     end
@@ -15,15 +14,13 @@ classdef testEstimateWhittleAlpha < matlab.unittest.TestCase
     methods (TestClassSetup)
         function addPaths(testCase)
             addpath(testCase.ToolboxDir);  testCase.addTeardown(@() rmpath(testCase.ToolboxDir));
-            if isfolder(testCase.LegacyFunctionsDir)
-                addpath(testCase.LegacyFunctionsDir);  testCase.addTeardown(@() rmpath(testCase.LegacyFunctionsDir));
-            end
+            addLegacySource(testCase);   % FRACTALNOISE_LEGACY_SRC
         end
     end
 
     methods (Test)
         function testMatchesAlphaPWLWv001(testCase)
-            testCase.assumeTrue(exist("alphaPWLW_v001", "file") == 2, "alphaPWLW_v001 not on path; skipping.");
+            testCase.assumeTrue(exist("alphaPWLW_v001", "file") == 2, "alphaPWLW_v001 not on path (set FRACTALNOISE_LEGACY_SRC); skipping.");
             rng(11);  x = noiseXu(2400, 4.5, 1, 240);
             [a1, k1] = estimateWhittleAlpha(x, 240, 1, 20);
             [a2, k2] = alphaPWLW_v001(x, 240, [1 20]);

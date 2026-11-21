@@ -10,6 +10,12 @@ arguments
     outDir (1, :) char
     nReps (1, 1) double {mustBeInteger, mustBePositive} = 10
 end
+% fractal-noise v2.0.0: these results were produced with the v1.x estimateIRASA default,
+% which is now Resampling="legacy" (a multitaper/Welch slope fit that does not remove
+% peaks). Calls are pinned to "legacy" so a rerun reproduces them; see plan v010 F13.
+fprintf('Note: estimateIRASA pinned to Resampling="legacy" (v1.x behaviour); legacy warnings suppressed in this session.\n');
+warnState = warning("off", "estimateIRASA:legacyResampling");
+cleanupWarn = onCleanup(@() warning(warnState));
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here, '..', '..', 'toolbox'), fullfile(here, '..', 'exactReference'));
 if ~isfolder(outDir), mkdir(outDir); end
@@ -34,10 +40,10 @@ for g = gens
                 for m = 1:numel(meths)
                     try
                         switch meths(m)
-                            case "irasa_pmtm",     est(m) = estimateIRASA(x, fs, band(1), band(2));
-                            case "irasa_welch",    est(m) = estimateIRASA(x, fs, band(1), band(2), PSD="welch");
-                            case "irasa_pmtm_pw",  est(m) = estimateIRASA(x, fs, band(1), band(2), Prewhiten=k);
-                            case "irasa_welch_pw", est(m) = estimateIRASA(x, fs, band(1), band(2), PSD="welch", Prewhiten=k);
+                            case "irasa_pmtm",     est(m) = estimateIRASA(x, fs, band(1), band(2), Resampling="legacy");
+                            case "irasa_welch",    est(m) = estimateIRASA(x, fs, band(1), band(2), PSD="welch", Resampling="legacy");
+                            case "irasa_pmtm_pw",  est(m) = estimateIRASA(x, fs, band(1), band(2), Prewhiten=k, Resampling="legacy");
+                            case "irasa_welch_pw", est(m) = estimateIRASA(x, fs, band(1), band(2), PSD="welch", Prewhiten=k, Resampling="legacy");
                             case "whittle",        est(m) = estimateWhittleAlpha(x, fs, band(1), band(2));
                         end
                     catch ME

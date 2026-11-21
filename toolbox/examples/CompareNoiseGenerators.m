@@ -2,9 +2,9 @@
 %[text] This toolbox offers several ways to get 1/f^alpha-ish noise, each suited to a different situation. This example generates the same target alpha via each route and compares the recovered alpha and spectral shape, to help you choose.
 %[text] ## The options
 %[text] - `noiseXu` -- parametric generator. You specify alpha directly; it synthesises a signal to match. Use this when you want noise with a  **known** ground-truth alpha (simulation, testing, stress-testing a pipeline).
-%[text] - `shapeNoise` with `PhaseSource="xu"` (its default) -- takes an  **empirical** residual's amplitude spectrum and imposes it onto a fresh  `noiseXu` phase carrier. Use this when you have real data and want a surrogate that matches its spectral shape without reusing its exact realisation.
-%[text] - `shapeNoise` with other `PhaseSource` choices (`"white"`,  `"pinknoise"`, `"dsp"`, or a custom handle) -- same empirical-magnitude idea, different phase carrier. Useful for testing whether your result is sensitive to the specific phase-generation method, not just the magnitude spectrum.
-%[text] - `external/fftnoise/fftnoise.m` -- a **phase-surrogate** generator (Aslak Grinsted, 2011): takes an existing signal's FFT and randomises its phase, keeping the exact magnitude spectrum. Different from  `noiseXu` in kind, not just implementation -- it needs a real FFT to start from, it doesn't synthesise one from a target alpha. Included as an alternative phase source for `shapeNoise`. \
+%[text] - `shapeNoise` (default, end-matched) -- takes an  **empirical** residual, finds its longest segment whose ends meet, and puts random phases on that segment's amplitude spectrum, keeping a draw only if its exponent matches. Use this when you have real data and want a surrogate that matches its spectrum and derivative noise without reusing its exact realisation. The output is shorter than the input (`info.L`).
+%[text] - `shapeNoise` with `Method="legacy"` -- the 1.x construction: the whole record's amplitude spectrum on a phase carrier (`PhaseSource` `"xu"`, `"white"`, `"pinknoise"`, `"dsp"`, or a handle). Kept to reproduce earlier results; at steep alpha a share of its surrogates come out shallow, and it warns.
+%[text] - `external/fftnoise/fftnoise.m` -- a **phase-surrogate** generator (Aslak Grinsted, 2011): randomises the phases of a whole record's FFT. Different from  `noiseXu` in kind -- it needs a real FFT to start from. Applied to a whole steep record it inherits the end-mismatch leakage; see `examples/CompareFftnoiseVsShapedXu.m`. \
 %[text] ## Generating the same target alpha several ways
 fs = 100;
 N = 3000;
@@ -22,13 +22,14 @@ rng(11);
 empiricalStandIn = noiseXu(N, targetAlpha, 3.0, fs);
 
 rng(12);
-shapedXu = shapeNoise(empiricalStandIn, fs, targetAlpha, PhaseSource="xu");
+[shapedEM, info] = shapeNoise(empiricalStandIn, fs, []);
+fprintf("End-matched segment: L = %d of %d samples\n", info.L, N);
 rng(13);
-shapedWhite = shapeNoise(empiricalStandIn, fs, targetAlpha, PhaseSource="white");
+shapedLegacy = shapeNoise(empiricalStandIn, fs, targetAlpha, Method="legacy", PhaseSource="xu");
 %%
 %[text] ## Recovering alpha from each
-methodNames = ["noiseXu (direct)"; "shapeNoise (xu carrier)"; "shapeNoise (white carrier)"];
-signals = {xuDirect, shapedXu, shapedWhite};
+methodNames = ["noiseXu (direct)"; "shapeNoise (end-matched)"; "shapeNoise (legacy, xu carrier)"];
+signals = {xuDirect, shapedEM, shapedLegacy};
 recoveredAlpha = zeros(numel(signals), 1);
 for i = 1:numel(signals)
     recoveredAlpha(i) = estimateIRASA(signals{i}, fs, fLow, fHigh);
@@ -45,12 +46,12 @@ tiledlayout(1, 2);
 
 nexttile;
 [pxxXu, fXu] = pmtm(xuDirect, 4, [], fs);
-[pxxShapedXu, fShapedXu] = pmtm(shapedXu, 4, [], fs);
-[pxxShapedWhite, fShapedWhite] = pmtm(shapedWhite, 4, [], fs);
+[pxxShapedEM, fShapedEM] = pmtm(shapedEM, 4, [], fs);
+[pxxShapedLegacy, fShapedLegacy] = pmtm(shapedLegacy, 4, [], fs);
 loglog(fXu, pxxXu, DisplayName="noiseXu (direct)");
 hold on;
-loglog(fShapedXu, pxxShapedXu, DisplayName="shapeNoise (xu carrier)");
-loglog(fShapedWhite, pxxShapedWhite, DisplayName="shapeNoise (white carrier)");
+loglog(fShapedEM, pxxShapedEM, DisplayName="shapeNoise (end-matched)");
+loglog(fShapedLegacy, pxxShapedLegacy, DisplayName="shapeNoise (legacy)");
 hold off;
 xlabel("Frequency (Hz)");
 ylabel("PSD");
@@ -65,9 +66,9 @@ ylabel("Recovered alpha");
 title("Alpha recovery by method");
 xtickangle(20);
 %%
-%[text] All three methods should cluster near the target alpha -- the point of this comparison isn't that one is "more correct" (they're all valid ways to get 1/f^alpha-shaped output), it's that the **phase** carrier choice barely matters once the magnitude spectrum is fixed, which is itself informative: alpha, as IRASA estimates it, is a magnitude- spectrum property, largely independent of phase structure.
-%[text] ## When would the phase carrier choice actually matter?
-%[text] If your downstream analysis is sensitive to something **other** than the power spectrum -- e.g. higher-order statistics, waveform shape, specific autocorrelation structure at short lags -- the phase carrier choice can matter even though alpha recovery looks identical here. `shapeNoise`'s `PhaseSource` argument exists precisely so you can test that sensitivity directly, by swapping carriers and re-running your actual downstream analysis, not just an alpha check.
+%[text] At alpha 2.5 all three cluster near the target: the end-mismatch problem that sinks the legacy construction is rare below alpha 3. Run the comparison at alpha 4 or 5, or over many seeds, to see the legacy tail (`validation/checkShapeNoiseEndMatched_v001.m` does this).
+%[text] ## When would the construction matter beyond alpha?
+%[text] If your downstream analysis is sensitive to something **other** than the spectral exponent -- derivative noise (velocity, acceleration, curvature), higher-order statistics, waveform shape -- check the surrogate on that quantity, not on alpha alone. On real movement residuals the legacy construction matched alpha but left velocity and curvature noise up to 30% short for some datasets; the end-matched surrogate matched both.
 %[text] ## Cross-references
 %[text] - `noiseXu.m`, `shapeNoise.m` docstrings
 %[text] - `doc/GettingStarted.mlx` for a broader tour of the toolbox \

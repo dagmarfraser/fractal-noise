@@ -6,26 +6,19 @@ classdef testNoiseXu < matlab.unittest.TestCase
 % edge cases (zero amplitude, arguments-block validation), and a
 % known-alpha recovery check (regression net per TODO Item 7).
 
-    properties (Constant)
-        LegacyFunctionsDir = "/Users/d.s.fraser/Library/CloudStorage/Dropbox/Brain2Bee/PowerLawSimulationPreReg/src/functions"
-    end
-
     methods (TestClassSetup)
         function addToolboxAndLegacyPaths(testCase)
             toolboxDir = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox");
             addpath(toolboxDir);
             testCase.addTeardown(@() rmpath(toolboxDir));
-            if isfolder(testCase.LegacyFunctionsDir)
-                addpath(testCase.LegacyFunctionsDir);
-                testCase.addTeardown(@() rmpath(testCase.LegacyFunctionsDir));
-            end
+            addLegacySource(testCase);   % FRACTALNOISE_LEGACY_SRC
         end
     end
 
     methods (Test)
         function testMatchesXuNoiseV002ForSameSeed(testCase)
             testCase.assumeTrue(exist("XuNoise_v002", "file") == 2, ...
-                "XuNoise_v002 not on path; skipping source-equivalence test.");
+                "XuNoise_v002 not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.");
             rng(42);
             n1 = noiseXu(2000, 2.0, 1.5, 60);
             rng(42);
@@ -35,7 +28,7 @@ classdef testNoiseXu < matlab.unittest.TestCase
 
         function testMatchesGenerateCustomNoiseV004ForSameSeed(testCase)
             testCase.assumeTrue(exist("generateCustomNoise_v004", "file") == 2, ...
-                "generateCustomNoise_v004 not on path; skipping wrapper-equivalence test.");
+                "generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping wrapper-equivalence test.");
             rng(7);
             nOld = generateCustomNoise_v004(1000, 3.0, 1.0, 100);
             rng(7);
