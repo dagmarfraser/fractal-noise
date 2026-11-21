@@ -256,6 +256,25 @@ classdef testEstimateIRASA < matlab.unittest.TestCase
         function testIrasaResamplingBandTooHighErrors(testCase)
             testCase.verifyError(@() estimateIRASA(randn(2000, 1), 100, 1, 30, Resampling="irasa"), "estimateIRASA:irasaBand");
         end
+
+        function testSigmaOfUnitWhiteNoise(testCase)
+            % Known answer: for white noise of unit SD the scale-free part is all of it, so sigmaEst is about 1.
+            rng(6);  [a, s] = estimateIRASA(randn(20000, 1), 100, 1, 20);
+            testCase.verifyEqual(s, 1, "AbsTol", 0.05);
+            testCase.verifyEqual(a, 0, "AbsTol", 0.1);
+        end
+
+        function testPeakLeavesNoHumpInFractalSpectrum(testCase)
+            % A strong 10 Hz sine on break-free alpha-1.5 noise: the median over Hset removes it, so pFractal stays close to a
+            % straight line in log-log (worst deviation 0.12-0.14 in log10 here; a mean over Hset leaves 0.6 or more).
+            for sd = 7:9
+                rng(sd);  t = (0:1/100:60)';  x = noiseXu(numel(t), 1.5, 1, 100, Phi=1) + 1.5 * sin(2 * pi * 10 * t);
+                [~, ~, pF, fV] = estimateIRASA(x, 100, 1, 20);
+                m = fV >= 1 & fV <= 20 & ~isnan(pF);
+                p = polyfit(log10(fV(m)), log10(pF(m)), 1);
+                testCase.verifyLessThan(max(abs(log10(pF(m)) - polyval(p, log10(fV(m))))), 0.3, sprintf("Seed %d.", sd));
+            end
+        end
     end
 
     methods (Static)

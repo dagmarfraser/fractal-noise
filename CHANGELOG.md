@@ -35,6 +35,20 @@ An API audit (2026-11-17) found the defaults tied to the first use case (hand-mo
 - `estimateIRASA` accuracy re-measured under the default `Resampling="irasa"` (2026-11-21, `validation/irasaOptions/checkIRASAOptions_v002`,
   legacy run on the same series). The help RANGE now gives these figures: on peak-free noise the default and legacy agree within 0.19;
   with `Prewhiten` the worst bias is +/-0.29 (was +/-0.23 under legacy); the advice is unchanged.
+- README and documentation, 2026-11-21: the README follows one worked story (a recorded movement, choosing K, the template, the exponent,
+  the knee check, a batch of surrogates and `summariseShapeNoiseBatch`), its quick start runs as written without a warning, installation
+  points to File Exchange and the GitHub Release, and the example paths are corrected. `GettingStarted` covers the template, K and the batch
+  summary. New test `testReadmeAndExamples` runs every README code block, example and documentation page and checks their stated results.
+- `KneeCheckWorkedExample` now uses synthetic spectra only (its per-dataset real-data table is held for v2.1.0). Two statements were wrong and
+  are corrected: `alphaWide` is the fixed power-law fit over the wide band, not a knee-aware exponent (with a knee inside the band it is biased
+  too); and the "no knee" case now uses break-free noise (`Phi=1`), because the default `noiseXu` break at about 0.0016*fs is a real knee that
+  `checkSpectralKnee` detects under the fixed IRASA.
+- Tests, 2026-11-21: known-answer tests for `estimateWhittleAlpha` (DFA pre-estimate, differencing order and accuracy on exact references,
+  search-bound and too-few-bins errors, and the Hann variance factor sqrt(35/18)), `estimateIRASA` (sigma of unit white noise; no hump left
+  after removing a peak) and `checkSpectralKnee` (break-free noise gives the pure +2 penalty; knee located below and inside the band; a
+  marginal verdict). `runMutationChecks` gains 20 mutants for `noiseXu`, `estimateWhittleAlpha`, `estimateIRASA` and `checkSpectralKnee`
+  (64 in all) and copies `validation/exactReference` so the exact-reference tests run on each mutant. The source-equivalence tests against
+  the original research code pass (`validation/runSuiteWithLegacySource_v001.m`).
 - New `harmonicContent(x, fs, f0)`: the content rule as a diagnostic. Per harmonic k it returns the amplitude over the noise between harmonics; K is the highest k, counted up from 1, whose ratio is at least `Cut` (2), never below 1, with `info.noHarmonic` flagging when even harmonic 1 is below the cut. It is not a selector of record: an information-criterion rule was tried in the source project and failed its acceptance test, so it is not included; that and a stacked-spectrum plot are planned for v2.1.0. `testHarmonicContent` has 11 tests.
 - `shapeNoise` info now reports the band used (`info.AlphaBand`); `cetNoiseWrapper` takes `File=` to use a newer HadCET download.
 - Mutation checks: `validation/runMutationChecks.m` applies 21 one-line deliberate bugs (drop the Hann weights, ignore an option, loosen a bound, ...) to a temporary copy and checks that the tests fail. First run: 15 of 22 killed; the survivors showed untested bounds, the zero-tail threshold, the kinematic band edge, channel averaging and the missing-month guard (and one equivalent mutant, a redundant detrend, which was removed from the code). Tests were added for each; now 21 of 21 killed. The repository is never modified by the script.

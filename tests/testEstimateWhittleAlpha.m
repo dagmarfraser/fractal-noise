@@ -77,5 +77,50 @@ classdef testEstimateWhittleAlpha < matlab.unittest.TestCase
             rng(1);  a = estimateWhittleAlpha(noiseXu(1500, 3.0, 1, 100), 100, 1, 20);
             testCase.verifyTrue(isfinite(a));
         end
+
+        function testDfaPreEstimateKnownAnswers(testCase)
+            % The DFA-3 pre-estimate is returned as a spectral exponent (2H - 1): about 0 for white noise, about 2 for alpha-2 noise.
+            rng(2);  [~, ~, iw] = estimateWhittleAlpha(randn(3000, 1), 240, 1, 20);
+            rng(3);  [~, ~, ib] = estimateWhittleAlpha(noiseXu(3000, 2, 1, 240, Phi=1), 240, 1, 20);
+            testCase.verifyEqual(iw.alphaDFA, 0, "AbsTol", 0.25);
+            testCase.verifyEqual(ib.alphaDFA, 2, "AbsTol", 0.35);
+        end
+
+        function testDifferencingOrderAndAccuracyOnExactReferences(testCase)
+            % Known truth: k = floor((alpha + 1) / 2) for every series, and the median estimate within 0.1 of alpha.
+            testCase.assumeTrue(isfolder(testCase.ExactRefDir), "validation/exactReference not present; skipping.");
+            addpath(testCase.ExactRefDir);  testCase.addTeardown(@() rmpath(testCase.ExactRefDir));
+            for a = [0.5 2.5 4.5 6.5]
+                X = exactRefSeries_v001(3000, a, 20);  est = zeros(20, 1);  k = est;
+                for r = 1:20, [est(r), k(r)] = estimateWhittleAlpha(X(:, r), 240, 1, 20); end
+                testCase.verifyEqual(k, repmat(floor((a + 1) / 2), 20, 1), sprintf("Differencing order at alpha %.1f.", a));
+                testCase.verifyEqual(median(est), a, "AbsTol", 0.1, sprintf("Median estimate at alpha %.1f.", a));
+            end
+        end
+
+        function testEstimateOnSearchBoundIsAnError(testCase)
+            rng(5);  x = noiseXu(3000, 4, 1, 240);
+            testCase.verifyError(@() estimateWhittleAlpha(x, 240, 1, 20, AlphaBounds=[-2 2]), "estimateWhittleAlpha:bound");
+        end
+
+        function testFewerThanTenBinsIsAnError(testCase)
+            rng(4);  x = noiseXu(600, 2, 1, 240);   % 0.4 Hz resolution: 8 bins in [1 4] Hz, 12 in [1 6] Hz
+            testCase.verifyError(@() estimateWhittleAlpha(x, 240, 1, 4), "estimateWhittleAlpha:band");
+            [~, ~, info] = estimateWhittleAlpha(x, 240, 1, 6);
+            testCase.verifyEqual(info.nBins, 12);
+        end
+
+        function testSpreadMatchesHannVarianceFactor(testCase)
+            % Known answer: with the Hann taper the SD over exact references is sqrt(35/18) = 1.39 times the untapered
+            % local Whittle SD for the band (Velasco 1999, p. 101); measured 1.40 here, 0.99 without the taper.
+            testCase.assumeTrue(isfolder(testCase.ExactRefDir), "validation/exactReference not present; skipping.");
+            addpath(testCase.ExactRefDir);  testCase.addTeardown(@() rmpath(testCase.ExactRefDir));
+            X = exactRefSeries_v001(3000, 2.5, 100);  e = zeros(100, 1);
+            for r = 1:100, e(r) = estimateWhittleAlpha(X(:, r), 240, 1, 20); end
+            M = 3000 - 1;  f = (0:M - 1)' * 240 / M;  f = f(f >= 1 & f <= 20);  nu = log(f) - mean(log(f));
+            ratio = std(e) * sqrt(sum(nu .^ 2));
+            testCase.verifyGreaterThan(ratio, 1.2);
+            testCase.verifyLessThan(ratio, 1.65);
+        end
     end
 end

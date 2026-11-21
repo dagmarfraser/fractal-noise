@@ -118,5 +118,44 @@ classdef testCheckSpectralKnee < matlab.unittest.TestCase
             expected = result.kneeHz >= result.fBandLow && result.kneeHz <= result.fHigh;
             testCase.verifyEqual(result.kneeInBand, expected);
         end
+
+        function testBreakFreeNoiseIsPurePenalty(testCase)
+            % No knee: the knee model fits no better, so deltaAIC is exactly the extra parameter's penalty, +2.
+            rng(8);  r = checkSpectralKnee(noiseXu(4000, 3.8, 3, 133, Phi=1), 133);
+            testCase.verifyEqual(string(r.verdict), "none");
+            testCase.verifyEqual(r.deltaAIC, 2, "AbsTol", 1e-9);
+        end
+
+        function testKneeLocatedBelowAndInsideBand(testCase)
+            % Exact Lorentzian spectra (alpha 4.5): knee 0.28 Hz is below the 1 Hz band edge, knee 3 Hz is inside it.
+            ff = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox", "external", "fftnoise");  addpath(ff);  testCase.addTeardown(@() rmpath(ff));
+            rng(1);  below = checkSpectralKnee(lorentzianSeries(4000, 133, 4.5, 0.28), 133, WideBandLow=0.05);
+            rng(2);  inside = checkSpectralKnee(lorentzianSeries(4000, 133, 4.5, 3.0), 133);
+            testCase.verifyFalse(below.kneeInBand);
+            testCase.verifyEqual(below.kneeHz, 0.28, "AbsTol", 0.1);
+            testCase.verifyTrue(inside.kneeInBand);
+            testCase.verifyEqual(inside.kneeHz, 3.0, "AbsTol", 0.5);
+            testCase.verifyEqual(string(inside.verdict), "strong");
+        end
+
+        function testMarginalVerdictBand(testCase)
+            % A weak sub-floor knee in a short record: deltaAIC between -10 and -2 is "marginal" (here about -5.5).
+            ff = fullfile(fileparts(mfilename("fullpath")), "..", "toolbox", "external", "fftnoise");  addpath(ff);  testCase.addTeardown(@() rmpath(ff));
+            fs = 133;  N = 500;  f = (0:N - 1)' * fs / N;  f(f > fs / 2) = f(f > fs / 2) - fs;
+            rng(300);  lz = fftnoise((0.5 ^ 2 + f .^ 2) .^ (-3 / 4));  lz = lz / std(lz);
+            rng(600);  bf = noiseXu(N, 1.5, 1, fs, Phi=1);
+            r = checkSpectralKnee(0.6 * lz + bf, fs);
+            testCase.verifyGreaterThan(r.deltaAIC, -10);
+            testCase.verifyLessThan(r.deltaAIC, -2);
+            testCase.verifyEqual(string(r.verdict), "marginal");
+        end
     end
+end
+
+function x = lorentzianSeries(N, fs, alpha, kneeHz)
+% Series with an exact Lorentzian spectrum: magnitude (knee^2 + f^2)^(-alpha/4) at every FFT bin, random phases (fftnoise).
+f = (0:N - 1)' * fs / N;
+f(f > fs / 2) = f(f > fs / 2) - fs;
+x = fftnoise((kneeHz ^ 2 + f .^ 2) .^ (-alpha / 4));
+x = (x - mean(x)) / std(x);
 end

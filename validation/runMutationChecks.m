@@ -23,7 +23,8 @@ end
 here = fileparts(mfilename("fullpath"));  root = fileparts(here);
 M = mutants();
 if options.Only ~= "", M = M(contains([M.file], options.Only)); end
-tests = ["testHarmonicTemplate" "testShapeNoiseGenericity" "testWrappers" "testHarmonicContent" "testShapeNoise" "testSummariseShapeNoiseBatch"];
+tests = ["testHarmonicTemplate" "testShapeNoiseGenericity" "testWrappers" "testHarmonicContent" "testShapeNoise" "testSummariseShapeNoiseBatch" ...
+         "testNoiseXu" "testEstimateWhittleAlpha" "testEstimateIRASA" "testCheckSpectralKnee"];
 
 oldPath = path;  cleanupPath = onCleanup(@() path(oldPath));  %#ok<NASGU>
 oldWarn = warning("on", "all");  cleanupWarn = onCleanup(@() warning(oldWarn));  %#ok<NASGU>   % warnings must be ON: several tests verify them
@@ -50,6 +51,9 @@ function [allPass, nFailed, nTests] = runIn(root, file, from, to, testNames)
 tmp = tempname;  mkdir(tmp);  cleanup = onCleanup(@() rmdir(tmp, "s"));  %#ok<NASGU>
 copyfile(fullfile(root, "toolbox"), fullfile(tmp, "toolbox"));
 copyfile(fullfile(root, "tests"), fullfile(tmp, "tests"));
+if isfolder(fullfile(root, "validation", "exactReference"))   % the exact-reference tests need it
+    copyfile(fullfile(root, "validation", "exactReference"), fullfile(tmp, "validation", "exactReference"));
+end
 if file ~= ""
     f = fullfile(tmp, "toolbox", file + ".m");  txt = string(fileread(f));
     nOcc = count(txt, from);
@@ -76,6 +80,7 @@ HT = ["testHarmonicTemplate" "testWrappers"];
 SN = ["testShapeNoise" "testShapeNoiseGenericity" "testWrappers"];
 HC = "testHarmonicContent";
 SB = "testSummariseShapeNoiseBatch";
+NX = "testNoiseXu";  WA = "testEstimateWhittleAlpha";  IR = "testEstimateIRASA";  CK = "testCheckSpectralKnee";
 M = [
  mk("T1", "harmonicTemplate", HT, "drop the Hann weights", "han = 0.5 * (1 - cos(2 * pi * (0:win - 1)' / (win - 1)));", "han = ones(win, 1);")
  mk("T2", "harmonicTemplate", HT, "remove one harmonic from the design", "for h = 1:K, D = [D,", "for h = 1:max(K - 1, 0), D = [D,")
@@ -121,5 +126,25 @@ M = [
  mk("B13", "summariseShapeNoiseBatch", SB, "untested batch reported as ok", "decision = ""tooFew"";", "decision = ""ok"";")
  mk("B14", "summariseShapeNoiseBatch", SB, "wrong binomial term", "(n - i) * log1p(-q)", "(n - i) * log(q)")
  mk("B15", "summariseShapeNoiseBatch", SB, "per-draw acceptance ignores the draws made", "nAccepted / sum(tries)", "nAccepted / nChannels")
+ mk("X1", "noiseXu", NX, "exponent halved (d = alpha/4)", "d = alpha / 2;", "d = alpha / 4;")
+ mk("X2", "noiseXu", NX, "Phi ignored in the recursion", "h = phi .* (k + d - 1) ./ k;", "h = (k + d - 1) ./ k;")
+ mk("X3", "noiseXu", NX, "output not rescaled to the amplitude", "noise = noise * (amplitude / currentStd);", "noise = noise * amplitude;")
+ mk("X4", "noiseXu", NX, "default Phi 1 instead of 0.99", "mustBeLessThanOrEqual(options.Phi, 1)} = 0.99", "mustBeLessThanOrEqual(options.Phi, 1)} = 1")
+ mk("A1", "estimateWhittleAlpha", WA, "differencing order one too low", "kUsed = min(max(floor((info.alphaDFA + 1) / 2), 0), options.MaxK);", "kUsed = min(max(floor((info.alphaDFA - 1) / 2), 0), options.MaxK);")
+ mk("A2", "estimateWhittleAlpha", WA, "Hann taper dropped", "w = 0.5 * (1 - cos(2*pi*(0:N-1)' / N));", "w = ones(N, 1);")
+ mk("A3", "estimateWhittleAlpha", WA, "periodogram not recoloured", "Ib = I(m) ./ (2 - 2*cos(lam)).^kUsed;", "Ib = I(m);")
+ mk("A4", "estimateWhittleAlpha", WA, "estimate on a bound not an error", "if flag ~= 1 || alphaEst - lo < 1e-3 || hi - alphaEst < 1e-3", "if flag ~= 1")
+ mk("A5", "estimateWhittleAlpha", WA, "too few bins allowed (3, not 10)", "if info.nBins < 10", "if info.nBins < 3")
+ mk("A6", "estimateWhittleAlpha", WA, "DFA exponent not converted (2H, not 2H - 1)", "a = 2 * p(1) - 1;", "a = 2 * p(1);")
+ mk("I1", "estimateIRASA", IR, "IRASA reverts to the pre-2.0 resampling bug", "isIrasa = resampling == ""irasa"";", "isIrasa = false;")
+ mk("I2", "estimateIRASA", IR, "mean instead of median over Hset", "pFractal = median(geoMeans, 2, 'omitnan');", "pFractal = mean(geoMeans, 2, 'omitnan');")
+ mk("I3", "estimateIRASA", IR, "band check fHigh*max(Hset) < fs/2 removed", "if options.Resampling == ""irasa"" && fHigh * max(options.Hset) >= fs / 2", "if false")
+ mk("I4", "estimateIRASA", IR, "prewhitened copies not recoloured", "geoMeans(:, hi) = geoMeans(:, hi) ./ gainH;", "geoMeans(:, hi) = geoMeans(:, hi);")
+ mk("I5", "estimateIRASA", IR, "noise variance halved", "noiseVar = trapz(fVec(validMask), pFractal(validMask)) * 2;", "noiseVar = trapz(fVec(validMask), pFractal(validMask));")
+ mk("K1", "checkSpectralKnee", CK, "strong threshold -2.5 instead of -10", "if deltaAIC < -10", "if deltaAIC < -2.5")
+ mk("K2", "checkSpectralKnee", CK, "knee model penalised as 2 parameters", "aicKnee = nWide * log(bestRss / nWide) + 2 * 3;", "aicKnee = nWide * log(bestRss / nWide) + 2 * 2;")
+ mk("K3", "checkSpectralKnee", CK, "kneeInBand ignores the lower band edge", "result.kneeInBand = kneeHz >= fBandLow && kneeHz <= fHigh;", "result.kneeInBand = kneeHz <= fHigh;")
+ mk("K4", "checkSpectralKnee", CK, "too-short residual allowed (8, not 80)", "if nSamples < 80", "if nSamples < 8")
+ mk("K5", "checkSpectralKnee", CK, "Lorentzian exponent doubled", "log10(10 ^ (2 * th(2)) + f .^ 2);", "log10(10 ^ (2 * th(2)) + f .^ 4);")
  ];
 end

@@ -6,31 +6,69 @@ Use it when you need to:
 
 1. **Simulate noise with a chosen spectral exponent**, for example to sweep alpha in a simulation grid or to test an analysis pipeline against known noise.
    `x = noiseXu(3000, 4.5, 1, 240);`
-2. **Build a null model of a signal you measured**: a random-phase surrogate of your residual that keeps both its spectral exponent and its derivative noise at steep alpha, where ordinary Fourier phase randomisation of the whole record does not.
-   `[s, info] = shapeNoise(myResidual, 240, []);`
+2. **Build a null model of a signal you measured**: remove its periodic part, then make random-phase surrogates of the residual that keep both its spectral exponent and its derivative noise at steep alpha, where ordinary Fourier phase randomisation of the whole record does not (see the [worked story](#a-worked-story-from-a-recorded-movement-to-a-null-model)).
 3. **Measure the spectral exponent of a signal**, with an estimator that stays accurate at steep alpha, and separate a scale-free background from rhythmic peaks.
    `alpha = estimateWhittleAlpha(x, 240, 1, 20);`
 4. **Check whether a spectrum is really a power law** or bends at a knee.
-   `r = checkSpectralKnee(myResidual, 240);`
+   `r = checkSpectralKnee(x, 240);`
 
 Typical users: movement science and motor control, psychophysics, physiology, and anyone who needs coloured noise outside the white-to-brown range (alpha 0-2) that built-in MATLAB generators cover.
 
 MIT licence. Base MATLAB for the generator, the surrogate and the Whittle estimator; Signal Processing Toolbox for the other two. Current release: see [CHANGELOG.md](CHANGELOG.md). Also on MATLAB File Exchange (184251).
 
-> **v2.0.0 fixes two things.** `estimateIRASA` did not remove oscillatory peaks up to v1.2.0, so its exponent was a plain spectral slope. `shapeNoise` gave a shallow surrogate about one time in five at alpha 3.5-4.5; it now builds its surrogate from an end-matched segment of the residual, so the surrogate is shorter than the input. Both defaults are now correct, and both old behaviours stay available by name. See [Upgrading from 1.x](#upgrading-from-1x).
+> **v2.0.0.** Two fixes: `estimateIRASA` did not remove oscillatory peaks up to v1.2.0, so its exponent was a plain spectral slope; and `shapeNoise` gave a shallow surrogate about one time in five at alpha 3.5-4.5, so it now builds its surrogate from an end-matched segment of the residual (shorter than the input). Both old behaviours stay available by name. New: `harmonicTemplate` and `harmonicContent` remove and diagnose the periodic part of a record, `shapeNoiseWrapper` and `cetNoiseWrapper` do the whole path in one call, and `summariseShapeNoiseBatch` reports acceptance across many surrogates. Also changed: `shapeNoise` needs at least 120 samples by default and warns when no `AlphaBand` is given, and the wrappers require K. See [Upgrading from 1.x](#upgrading-from-1x).
 
 ## Quick start
 
+Every code block in this README runs as written, top to bottom, in one MATLAB session (`tests/testReadmeAndExamples.m` checks this).
+
 ```matlab
+rng(1);
 x = noiseXu(3000, 4.5, 1.0, 240);                  % alpha 4.5, unit SD, 240 Hz
 [a, k] = estimateWhittleAlpha(x, 240, 1, 20)       % exponent over 1-20 Hz, and the differencing order used
-aI = estimateIRASA(x, 240, 1, 20, Prewhiten=k);    % IRASA on the same band, safe at steep alpha
-[s, info] = shapeNoise(myResidual, 240, []);      % surrogate of a measured residual (length info.L)
-[res, ~, ti] = harmonicTemplate(myPosition, 240, 1.2, 1);   % strip the periodic part (f0 1.2 Hz, K = 1), then shapeNoise(res, 240, [], AlphaBand="kinematic")
-K = harmonicContent(myPosition, 240, 1.2);           % how many harmonics stand above the noise? (look at its info.ratio too)
-[s2, i2] = shapeNoiseWrapper(myPosition, 240, F0=1.2, K=K, AlphaBand="kinematic");   % both steps in one call; K is required
-r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
+aI = estimateIRASA(x, 240, 1, 20, Prewhiten=k)     % IRASA on the same band, safe at steep alpha
+[s, info] = shapeNoise(x, 240, [], AlphaBand="kinematic");   % a random-phase surrogate with the same exponent (length info.L)
+r = checkSpectralKnee(x, 240);  r.verdict           % knee or no knee? (noiseXu's default has a real break near 0.0016*fs)
 ```
+
+## A worked story: from a recorded movement to a null model
+
+The question this toolbox was built for: in a recorded movement, is a pattern you see more than the noise would produce? To answer it you need noise that looks like the movement's own noise. The steps below use a synthetic stand-in for one axis of a traced ellipse, so they run anywhere; with your data, start from your own position trace.
+
+```matlab
+% 1. The record: a 1.2 Hz movement with a second harmonic, plus steep noise (240 Hz, 12.5 s).
+fs = 240;  t = (0:1/fs:12.5)';
+rng(1);
+pos = 2*sin(2*pi*1.2*t) + 0.5*sin(2*pi*2.4*t + 0.7) + noiseXu(numel(t), 3.5, 0.05, fs, Phi=1);
+
+% 2. How many harmonics stand out above the noise? Look at the ratios, not only the count.
+[K, hc] = harmonicContent(pos, fs, 1.2);
+hc.ratio(1:4)                                    % harmonics 1 and 2 stand far above the noise beside them; 3 and 4 do not, so K = 2
+
+% 3. Strip the periodic part. What is left is the noise you want to model.
+res = harmonicTemplate(pos, fs, 1.2, K);
+
+% 4. Measure it: the exponent over 1-20 Hz, and whether the spectrum bends.
+alphaRes = estimateWhittleAlpha(res, fs, 1, 20)
+knee = checkSpectralKnee(res, fs);
+[knee.verdict, " knee at " + knee.kneeHz + " Hz, in the 1-20 Hz band: " + knee.kneeInBand]
+
+% 5. Many surrogates of the residual: random phases, same exponent and derivative noise.
+infos = cell(1, 100);
+for i = 1:100
+    [sur, infos{i}] = shapeNoise(res, fs, [], AlphaBand="kinematic");
+end
+S = summariseShapeNoiseBatch(infos);             % warns only if acceptance is significantly low
+fprintf("%d of %d surrogates accepted\n", S.nAccepted, S.nChannels)
+```
+
+What the output tells you, step by step:
+
+- **Step 2.** `harmonicContent` counts the harmonics that stand out (K = 2 here). See [Choosing K for your data](#choosing-k-for-your-data) before you rely on one count.
+- **Step 4.** The knee check finds a knee near 0.3 Hz, below the 1-20 Hz band (`kneeInBand` false). The template removes a constant and a trend in each window of four cycles, which takes out the slowest drift. A knee below the band does not bias the exponent you measured over 1-20 Hz; a knee inside the band would.
+- **Step 5.** Each surrogate is a draw of noise like the residual's. To test a pattern, compute your statistic on the movement and on the surrogates (each added back to the template if your statistic needs the movement), and compare. `summariseShapeNoiseBatch` tells you whether the surrogates were built reliably across the batch.
+
+Steps 3 and 5 in one call: `[sur, info] = shapeNoiseWrapper(pos, fs, F0=1.2, K=K, AlphaBand="kinematic")`. The measured range of `shapeNoise` (how steep a record it handles) is in its help, under RANGE.
 
 ## What's in it
 
@@ -40,6 +78,7 @@ r = checkSpectralKnee(myResidual, 240);            % knee or no knee?
 | `shapeNoise` | Surrogate of a measured signal: random phases on the amplitude spectrum of its longest end-matched segment, kept only if its exponent matches | Base MATLAB (`Method="legacy"` carriers `"pinknoise"`/`"dsp"` need Signal Processing / DSP System Toolbox) |
 | `harmonicTemplate` | Windowed harmonic-regression template: removes the periodic part of a record (f0 given or estimated, K harmonics, window in cycles) and returns the residual `shapeNoise` takes; K and the window are yours to choose | Base MATLAB |
 | `harmonicContent` | Diagnostic: how many harmonics of f0 stand above the noise between them (content rule); a count to look at, not a selector of record | Base MATLAB |
+| `summariseShapeNoiseBatch` | Acceptance share and tries across many `shapeNoise` calls; warns when acceptance is significantly below 95% | Base MATLAB |
 | `shapeNoiseWrapper`, `cetNoiseWrapper` | One call from a record to a surrogate (optional harmonic template, then `shapeNoise`); K, the number of harmonics stripped, is required and has no default (see [Choosing K for your data](#choosing-k-for-your-data)); `cetNoiseWrapper` is the worked example on the monthly Central England Temperature series, not hand movement | Base MATLAB |
 | `estimateWhittleAlpha` | Spectral exponent over a band by prewhitened local Whittle; the one to use at steep alpha | Base MATLAB |
 | `estimateIRASA` | IRASA (Wen & Liu 2016): spectral exponent and noise magnitude of the scale-free part, with oscillatory peaks removed | Signal Processing Toolbox; optional FieldTrip cross-check |
@@ -70,9 +109,9 @@ n = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=Kc);
 |---|---|
 | Steep (alpha above about 3), or unknown | `estimateWhittleAlpha` |
 | Has rhythmic peaks you want ignored | `estimateIRASA`, with `Prewhiten=k` if it may be steep |
-| Both | Run both and compare: `[~, k] = estimateWhittleAlpha(x, fs, 1, 20); estimateIRASA(x, fs, 1, 20, Prewhiten=k)` |
+| Both | Run both and compare: `[~, k] = estimateWhittleAlpha(x, 240, 1, 20); estimateIRASA(x, 240, 1, 20, Prewhiten=k)` |
 
-- **`estimateWhittleAlpha`** differences the series k times (k from a DFA-3 pre-estimate), so low-frequency power cannot leak into the fitting band, then fits a local Whittle likelihood over your band. On exact reference series and on `noiseXu` output it is within about +/-0.2 for alpha up to 6.5.
+- **`estimateWhittleAlpha`** differences the series k times (k from a DFA-3 pre-estimate), so low-frequency power cannot leak into the fitting band, then fits a local Whittle likelihood over your band. On exact reference series it is within 0.08 of the in-band slope for alpha -1.5 to 9.5, and it errors rather than return a number at its search bounds (`validation/rangeEvidence_v002.md`).
 - **`estimateIRASA`** resamples the signal by a set of factors so that rhythmic peaks move while the scale-free background stays put, then takes the median. Its spectra are whole-record multitaper estimates, which leak at steep alpha: without `Prewhiten`, noise that has no low-frequency break can read several units wrong. `Prewhiten=k` removes that. The fitting band must satisfy `fHigh*max(Hset) < fs/2` (with the default `Hset`, `fHigh < fs/3.8`).
 
 ## What `noiseXu` generates (read this before using alpha > 2)
@@ -108,34 +147,39 @@ The break makes spectral estimators look better on default `noiseXu` output than
 - A second output, `info`, gives the segment (`i0`, `i1`, `L`, `Lfrac`), the target and achieved exponent, and the draw count. A channel with no accepted draw comes back as NaN with a warning.
 - Steep records may have no segment whose ends meet; `shapeNoise` then errors rather than return something else. On exact references with no low-frequency break, at most 1.3% of series fail for alpha -0.75 to 2.5, 25-51% from 2.95 to 4, and 96-100% from 4.95 (see RANGE in the `shapeNoise` help and `validation/rangeEvidence_v002.md`).
 - `alpha` is now the target for the selection step. Pass `[]` to use the segment's own exponent.
+- `shapeNoise` searches segments of at least `MinLength` = 120 samples, so a record shorter than 120 samples is an error (`shapeNoise:short`). Pass `MinLength` lower only if you check the exponent yourself.
+- `shapeNoise` warns (`shapeNoise:defaultAlphaBand`) when `AlphaBand` is not given: the default band [1 20] assumes movement data in Hz. Pass `AlphaBand="kinematic"` for that band without the warning, or `[fLow fHigh]` in the units of `fs`.
 - A residual with a run of exact zeros at either end (for example an uncovered template tail) is an error. Pass only the part the template covered.
 - `PhaseSource` now applies only to `Method="legacy"`, which reproduces 1.x bit for bit and warns on every call.
 
 ## Installation
 
-**Toolbox file (recommended):** double-click `release/Fractal Noise Toolbox.mltbx`, or `matlab.addons.toolbox.installToolbox("release/Fractal Noise Toolbox.mltbx")`. This also puts `external/fftnoise/` on the path.
+**Toolbox file (recommended):** install "Fractal Noise Toolbox" from MATLAB File Exchange (184251) through the Add-On Explorer, or download the `.mltbx` from the repository's GitHub Releases and double-click it. This also puts `external/fftnoise/` on the path.
 
-**Source folder:**
+**Source folder:** from the folder you cloned the repository into:
 ```matlab
-addpath('/path/to/fractalnoise/toolbox');
-addpath('/path/to/fractalnoise/toolbox/external/fftnoise');   % only if you need fftnoise
+addpath(fullfile(pwd, "toolbox"));
+addpath(fullfile(pwd, "toolbox", "external", "fftnoise"));   % only if you need fftnoise
 ```
 
 Requires MATLAB R2025a or later for the documentation (plain-text Live Code format). The functions may run on older releases; untested.
 
 ## Examples and documentation
 
-- `examples/CompareFftnoiseVsShapedXu.m`: why Fourier phase randomisation of a whole record (`fftnoise`) fails to keep a steep spectrum, and how `shapeNoise` avoids it.
-- `examples/CompareNoiseGenerators.m`: `noiseXu` beside the built-in generators.
-- `doc/`: getting started and function pages.
+- `toolbox/doc/GettingStarted.m`: a short tour of every function.
+- `toolbox/doc/WhyHomebrewIRASA.m`: what `estimateIRASA` does, the v2.0.0 fix, and what has been checked.
+- `toolbox/examples/CompareFftnoiseVsShapedXu.m`: why Fourier phase randomisation of a whole record (`fftnoise`) fails to keep a steep spectrum, and how `shapeNoise` avoids it.
+- `toolbox/examples/CompareNoiseGenerators.m`: `noiseXu` beside the built-in generators.
+- `toolbox/examples/KneeCheckWorkedExample.m`: `checkSpectralKnee` against synthetic spectra with a known knee.
 
 ## Testing
 
+From the folder you cloned the repository into:
 ```matlab
-results = runtests('/path/to/fractalnoise/tests');
+results = runtests(fullfile(pwd, "tests"));
 ```
 
-Tests cover known-alpha recovery, peak removal, surrogate fidelity at steep alpha, fail-loud error paths, optional-dependency handling, and a check that the toolbox works with only its own folder on the path. Source-equivalence tests against the research code the functions came from need that code's folder in the environment variable `FRACTALNOISE_LEGACY_SRC`; without it they are reported as filtered, and with `FRACTALNOISE_REQUIRE_LEGACY=1` a missing folder is an error. CI runs the suite on every push to `main` and on pull requests.
+Tests cover known-alpha recovery, peak removal, surrogate fidelity at steep alpha, fail-loud error paths, optional-dependency handling, a check that the toolbox works with only its own folder on the path, and a run of every README code block, example and documentation page. `validation/runMutationChecks.m` checks that the tests catch deliberate one-line bugs. Source-equivalence tests against the research code the functions came from need that code's folder in the environment variable `FRACTALNOISE_LEGACY_SRC`; without it they are reported as filtered, and with `FRACTALNOISE_REQUIRE_LEGACY=1` a missing folder is an error. CI runs the suite on every push to `main` and on pull requests.
 
 ## Validation
 
