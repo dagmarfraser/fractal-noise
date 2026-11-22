@@ -18,7 +18,7 @@ that history is not lost, just relocated to prose rather than the filename.
   (`convertScalingExponent:classRequired`) or a value outside the class's range or on an odd-integer boundary
   (`convertScalingExponent:outOfRange`) is an error. `testConvertScalingExponent` (8 tests); mutants V1-V8.
 - README, HadCET: the windowed template also removes variability slower than about `Window` cycles, so long-memory questions use
-  monthly anomalies (alpha 0.39, H 0.70 over 1-50 years, 1659-2025), compared with published CET and land-temperature H values.
+  monthly anomalies (alpha 0.39, H 0.70 over 1-50 years, 1659-2025), compared with the published CET analyses (Rypdal, Østvand & Rypdal 2013: H 0.65 +/- 0.07 on deseasonalised monthly CET; González-Hidalgo et al. 2020: H 0.72-0.80 on annual CET; citations checked against the papers 2026-11-22, `compareCETPublished_v001.m`).
   Validation: `exploreHadCET_v001.m`, `compareScalingExponents_v001.m`, `checkWhittleBandEdge_v001.m`, `checkNyquistKernel_v001.m`.
 
 ### Generality: `shapeNoise` for data that are not hand movement, and `harmonicTemplate`

@@ -1,0 +1,13 @@
+series                                          alpha      H   DFA3 a      H
+1659-2011 monthly anomalies                     0.397  0.699    0.302  0.651
+1659-2011 monthly anomalies, P1 detrended       0.397  0.699    0.302  0.651
+1659-2011 annual means                          0.395  0.698    0.525  0.763
+1659-2011 annual means, P1 detrended            0.395  0.698    0.525  0.763
+1659-2017 monthly anomalies                     0.394  0.697    0.327  0.663
+1659-2017 monthly anomalies, P1 detrended       0.394  0.697    0.327  0.663
+1659-2017 annual means                          0.388  0.694    0.524  0.762
+1659-2017 annual means, P1 detrended            0.388  0.694    0.524  0.762
+1659-2025 monthly anomalies                     0.391  0.695    0.329  0.665
+1659-2025 monthly anomalies, P1 detrended       0.391  0.695    0.329  0.665
+1659-2025 annual means                          0.380  0.690    0.534  0.767
+1659-2025 annual means, P1 detrended            0.380  0.690    0.534  0.767
