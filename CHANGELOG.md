@@ -151,7 +151,7 @@ residual's. It was never released and has been removed.
 3. Accept a draw when its `estimateWhittleAlpha` exponent is within
    `AlphaTol` (0.3) of the target; up to `MaxDraw` (20) draws.
 
-On real residuals (Fraser, Hickman, Cook) the surrogate's filtered
+On real hand-movement residuals the surrogate's filtered
 velocity and acceleration noise is 1.00-1.02 of the residual's. On
 synthetic noise (`validation/checkShapeNoiseEndMatched_v001.m`):
 100 noiseXu references per cell, alpha 0.5-6, fs 133 N 3000 and fs 240

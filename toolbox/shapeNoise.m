@@ -26,8 +26,8 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %   Under "detect" the wrap adds at most q(L-1)/(L-1) to the first-
 %   difference energy (about 4% at L 280, 1.4% at 1000, 0.5% at 3000).
 %
-%   Validated on real template-subtracted movement residuals (Fraser,
-%   Hickman, Cook; PowerLawSimulationPreReg runner v024): filtered velocity
+%   Validated on real template-subtracted hand-movement residuals from
+%   several datasets: filtered velocity
 %   and acceleration noise 1.00-1.02 of the residual's (median), with alpha
 %   held by the selection step. The 1.x construction failed that check
 %   (1-27% of surrogates more than 0.5 too shallow at alpha 3-6; see
