@@ -107,7 +107,8 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 %                  by a too-short segment; those series now end in noSegment, and failure rates rose by at most 2.6 percentage
 %                  points (validation/rangeEvidence_v002.md). Lower it only if you check the exponent yourself.
 %   AlphaBand    - [fLow fHigh] for estimateWhittleAlpha, in the units of fs (0 < fLow < fHigh < fs/2), or "kinematic"
-%                  ([1, min(20, fs/2 - 1)] Hz, the band validated on hand-movement residuals). NOT GIVEN: the kinematic
+%                  ([1, min(20, fs/2 - 1)] Hz, the band validated on hand-movement residuals at fs 240; below fs 160 Hz its upper edge
+%                  exceeds 25% of Nyquist, so choose a lower one). NOT GIVEN: the kinematic
 %                  band is used with the warning "shapeNoise:defaultAlphaBand", because it assumes Hz-scale movement
 %                  data; for any other data pass the band you mean. An invalid band is an error ("shapeNoise:alphaBand").
 %   CheckUncovered - true (default): exact-zero stretches of 3 or more samples at either end are an error
