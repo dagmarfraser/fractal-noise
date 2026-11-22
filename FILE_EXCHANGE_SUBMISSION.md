@@ -1,6 +1,6 @@
 # File Exchange Submission Content (draft)
 
-Status: draft, not yet submitted. GitHub repo now exists:
+Status: updated for v2.0.0 (2026-11-22). The File Exchange entry (184251) is GitHub-connected; v2.0.0 is published by merging PR #2 and cutting a GitHub Release. GitHub repo:
 https://github.com/dagmarfraser/fractal-noise -- see TODO Item 9. Next
 decision: connect live vs cut a Release first and link that (below),
 then complete the submission form.
@@ -31,7 +31,7 @@ info directly from the packaged toolbox's project metadata. These were
 already set when building `release/Fractal Noise Toolbox.mltbx`:
 
 - **Name:** Fractal Noise Toolbox
-- **Version:** 1.1.0
+- **Version:** 2.0.0 (built by `release/buildToolbox_v002.m`)
 - **Summary:** Generate, shape, estimate, and diagnose 1/f^alpha
   (fractal) noise in MATLAB.
 - **Author:** Dagmar Scott Fraser, University of Birmingham,
@@ -59,27 +59,30 @@ noise that follows a power-law relationship between spectral power and
 frequency, common in biological, neurophysiological, and instrumental
 signals.
 
-**Four functions:**
+**Eleven functions:**
 
 - `noiseXu` -- generate 1/f^alpha noise via Xu's (2019) fractional-
   differencing method (an exact spectral-synthesis method, not a filter
-  approximation)
+  approximation); alpha in [-2, 7] for generation
 - `shapeNoise` -- random-phase surrogate of an empirical residual, built
   on its longest end-matched segment and kept only when its exponent
   matches, so steep spectra and derivative noise survive (the 1.x
-  phase-carrier construction remains as `Method="legacy"`)
-- `estimateIRASA` -- recover the spectral exponent (alpha) and noise
-  magnitude from a signal via IRASA (Wen & Liu, 2016), with two optional
-  independent cross-validation checks: a FieldTrip comparison panel, and
-  a resampling-free direct pmtm slope fit (no extra toolbox needed for
-  the latter -- the genuinely independent check between the two, since
-  FieldTrip's IRASA shares a resampling-median mechanism with the
-  homebrew estimator)
-- `checkSpectralKnee` -- test whether a signal's spectrum is better
-  explained by a Lorentzian (kneed) model than a plain power law
-  (Preston, Smith & Voytek, 2026) -- relevant because IRASA-based alpha
-  estimates assume a scale-free spectrum, and a knee inside your fitting
-  band biases the result
+  phase-carrier construction remains as `Method="legacy"`); `shapeNoiseWrapper`
+  strips a harmonic template first, `cetNoiseWrapper` does the same for the
+  bundled Central England Temperature series (HadCET, Open Government Licence v3.0)
+- `harmonicTemplate`, `harmonicContent` -- fit and remove the periodic part of
+  a signal; diagnose how many harmonics it holds
+- `estimateWhittleAlpha` -- prewhitened local Whittle exponent, accurate at steep
+  alpha; warns about in-band peaks
+- `estimateIRASA` -- spectral exponent via IRASA (Wen & Liu, 2016) separating
+  scale-free background from rhythmic peaks, with optional FieldTrip and direct
+  pmtm cross-checks
+- `checkSpectralKnee` -- Lorentzian-vs-power-law knee diagnostic
+  (Preston, Smith & Voytek, 2026)
+- `convertScalingExponent` -- alpha, long-memory d, DFA exponent, Hurst H and
+  fractal dimension D (D from H is nominal: valid only under self-similarity,
+  Gneiting & Schlather 2004)
+- `summariseShapeNoiseBatch` -- acceptance summary for a batch of surrogates
 
 **No hard dependencies.** Every function that has an optional feature
 requiring another toolbox (MATLAB's Signal Processing Toolbox, DSP
@@ -87,7 +90,7 @@ System Toolbox, or FieldTrip) degrades visibly, not silently: requesting
 the feature without the dependency returns a clearly-flagged unavailable
 result with a warning, never a silent fallback.
 
-**Verified, not just documented.** 32-test suite covering source-
+**Verified, not just documented.** 168-test suite (2026-11-22: 156 passed, 0 failed, 12 filtered by optional dependencies) covering source-
 equivalence, independent-estimator cross-checks, edge cases, error
 paths, and self-containment (confirmed on a genuinely fresh MATLAB path
 via `restoredefaultpath`, not just a dedicated single test -- no hidden

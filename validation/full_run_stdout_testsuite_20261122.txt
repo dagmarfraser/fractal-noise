@@ -1,0 +1,603 @@
+Running testCheckSpectralKnee
+
+[Terse] Diagnostic logged (2026-11-22 18:51:18): FRACTALNOISE_LEGACY_SRC not set: source-equivalence tests will be filtered.
+
+================================================================================
+testCheckSpectralKnee/testMatchesSourcePerTrialCoreGivenSameStarts was filtered.
+    Test Diagnostic: Legacy source functions not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.
+================================================================================
+.
+================================================================================
+testCheckSpectralKnee/testDefaultArgsCallRuns was filtered.
+    Test Diagnostic: generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping.
+================================================================================
+.....
+================================================================================
+testCheckSpectralKnee/testKneeInBandLogicConsistentWithBounds was filtered.
+    Test Diagnostic: generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping.
+================================================================================
+....
+Done testCheckSpectralKnee
+__________
+
+Running testConvertScalingExponent
+........
+Done testConvertScalingExponent
+__________
+
+Running testEstimateIRASA
+
+[Terse] Diagnostic logged (2026-11-22 18:51:23): FRACTALNOISE_LEGACY_SRC not set: source-equivalence tests will be filtered.
+
+[Terse] Diagnostic logged (2026-11-22 18:51:23): FieldTrip not on path and FRACTALNOISE_FIELDTRIP not set: FieldTrip comparison tests will be filtered.
+
+================================================================================
+testEstimateIRASA/testMatchesSourceForSameSeed was filtered.
+    Test Diagnostic: Legacy source functions not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.
+================================================================================
+....[Warning: CompareFieldTrip=true requested but FieldTrip not found on path
+(checked for ft_defaults). Returning ftInfo.available=false. Install from
+https://www.fieldtriptoolbox.org and addpath the FieldTrip root folder to
+enable this comparison.] 
+[> In estimateIRASA>estimateIRASAFieldTripCompare (line 253)
+In estimateIRASA (line 203)
+In testEstimateIRASA/testCompareFieldTripDegradesGracefullyWhenUnavailable (line 89)]
+.
+================================================================================
+testEstimateIRASA/testCompareFieldTripSuccessPathWhenAvailable was filtered.
+    Test Diagnostic: FieldTrip not on path on this machine; success-path test not applicable.
+================================================================================
+..... .......... ..
+Done testEstimateIRASA
+__________
+
+Running testEstimateWhittleAlpha
+
+[Terse] Diagnostic logged (2026-11-22 18:51:44): FRACTALNOISE_LEGACY_SRC not set: source-equivalence tests will be filtered.
+
+================================================================================
+testEstimateWhittleAlpha/testMatchesAlphaPWLWv001 was filtered.
+    Test Diagnostic: alphaPWLW_v001 not on path (set FRACTALNOISE_LEGACY_SRC); skipping.
+================================================================================
+.......... ........
+Done testEstimateWhittleAlpha
+__________
+
+Running testHarmonicContent
+.......... .
+Done testHarmonicContent
+__________
+
+Running testHarmonicTemplate
+..........
+Done testHarmonicTemplate
+__________
+
+Running testNoiseXu
+
+[Terse] Diagnostic logged (2026-11-22 18:51:47): FRACTALNOISE_LEGACY_SRC not set: source-equivalence tests will be filtered.
+
+================================================================================
+testNoiseXu/testMatchesXuNoiseV002ForSameSeed was filtered.
+    Test Diagnostic: XuNoise_v002 not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.
+================================================================================
+.
+================================================================================
+testNoiseXu/testMatchesGenerateCustomNoiseV004ForSameSeed was filtered.
+    Test Diagnostic: generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping wrapper-equivalence test.
+================================================================================
+........
+Done testNoiseXu
+__________
+
+Running testReadmeAndExamples
+....
+Done testReadmeAndExamples
+__________
+
+Running testShapeNoise
+
+[Terse] Diagnostic logged (2026-11-22 18:52:12): FRACTALNOISE_LEGACY_SRC not set: source-equivalence tests will be filtered.
+
+================================================================================
+testShapeNoise/testMatchesSourceShapeXuLocalForSameSeed was filtered.
+    Test Diagnostic: generateCustomNoise_v004 not on path (set FRACTALNOISE_LEGACY_SRC); skipping source-equivalence test.
+================================================================================
+........[Warning: PhaseSource="dsp" (dsp.ColoredNoise) supports InverseFrequencyPower in
+[-2, 2]; requested alpha=4.00 clamped to 2.00.] 
+[> In shapeNoise>shapeNoiseCarrier (line 435)
+In shapeNoise>legacyShape (line 378)
+In shapeNoise (line 191)
+In testShapeNoise/testDspOutOfRangeAlphaClampsWithWarning (line 122)]
+.
+================================================================================
+testShapeNoise/testDspUnavailableErrorsCleanly was filtered.
+    Test Diagnostic: dsp.ColoredNoise is installed on this machine; unavailable-path test not applicable.
+================================================================================
+. 
+================================================================================
+testShapeNoise/testMatchesEndMatchedSourceForSameSeed was filtered.
+    Test Diagnostic: endToEndSegment_v006 / endMatchedNoise_v001 / alphaPWLW_v001 / chi2inv not on path (set FRACTALNOISE_LEGACY_SRC); skipping.
+================================================================================
+.
+================================================================================
+testShapeNoise/testSegmentRulesMatchSource was filtered.
+    Test Diagnostic: endToEndSegment_v006 / endMatchedNoise_v001 / alphaPWLW_v001 / chi2inv not on path (set FRACTALNOISE_LEGACY_SRC); skipping.
+================================================================================
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(x,100,[],SegmentRule="budget") (line 171)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testBudgetRuleNeedsBudget (line 171)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise (line 179)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testSegmentBookkeeping (line 191)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testTwoChannelsShareLength (line 204)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testReproducibleWithSeed (line 211)]
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise/testReproducibleWithSeed (line 212)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(x,100,[]) (line 218)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testUncoveredZeroTailErrors (line 218)]
+..[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(ones(200,1),100,[]) (line 227)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testConstantChannelErrors (line 227)]
+. [Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(x,100,[]) (line 233)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testNoEndMatchedSegmentErrors (line 233)]
+.[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(x,100,[],MinLength=32) (line 239)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testSegmentTooShortForAlphaErrors (line 239)]
+..[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testShapeNoise>@()shapeNoise(X,100,[2,2,2]) (line 262)
+In matlab.unittest.internal.constraints/FunctionHandleConstraint/invoke (line 35)
+In matlab.unittest.constraints/Throws/invoke (line 147)
+In matlab.unittest.constraints/Throws/throwsExpectedException (line 187)
+In matlab.unittest.constraints/Throws/satisfiedBy (line 56)
+In matlab.unittest.internal.constraints/CasualDiagnosticDecorator/satisfiedBy (line 42)
+In testShapeNoise/testAlphaSizeErrors (line 262)]
+....
+Done testShapeNoise
+__________
+
+Running testShapeNoiseGenericity
+........
+Done testShapeNoiseGenericity
+__________
+
+Running testSummariseShapeNoiseBatch
+.......... .......... .....
+Done testSummariseShapeNoiseBatch
+__________
+
+Running testToolboxSelfContained
+[Warning: AlphaBand not given: using the kinematic default [1 20] (the band
+validated on hand-movement residuals, fs in Hz). For other data pass
+AlphaBand=[fLow fHigh] in the units of fs, or AlphaBand="kinematic" to silence
+this warning.] 
+[> In shapeNoise>resolveAlphaBand (line 278)
+In shapeNoise (line 203)
+In testToolboxSelfContained/testCoreFunctionsWorkWithOnlyToolboxOnPath (line 46)]
+.
+Done testToolboxSelfContained
+__________
+
+Running testWrappers
+.......... .....
+Done testWrappers
+__________
+
+Failure Summary:
+
+     Name                                                                Failed  Incomplete  Reason(s)
+    =================================================================================================================
+     testCheckSpectralKnee/testMatchesSourcePerTrialCoreGivenSameStarts              X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testCheckSpectralKnee/testDefaultArgsCallRuns                                   X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testCheckSpectralKnee/testKneeInBandLogicConsistentWithBounds                   X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testEstimateIRASA/testMatchesSourceForSameSeed                                  X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testEstimateIRASA/testCompareFieldTripSuccessPathWhenAvailable                  X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testEstimateWhittleAlpha/testMatchesAlphaPWLWv001                               X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testNoiseXu/testMatchesXuNoiseV002ForSameSeed                                   X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testNoiseXu/testMatchesGenerateCustomNoiseV004ForSameSeed                       X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testShapeNoise/testMatchesSourceShapeXuLocalForSameSeed                         X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testShapeNoise/testDspUnavailableErrorsCleanly                                  X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testShapeNoise/testMatchesEndMatchedSourceForSameSeed                           X       Filtered by assumption.
+    -----------------------------------------------------------------------------------------------------------------
+     testShapeNoise/testSegmentRulesMatchSource                                      X       Filtered by assumption.
+                                         Name                                          Passed    Failed    Incomplete    Duration       Details   
+    _______________________________________________________________________________    ______    ______    __________    _________    ____________
+
+    {'testCheckSpectralKnee/testMatchesSourcePerTrialCoreGivenSameStarts'         }    false     false       true            1.148    {1×1 struct}
+    {'testCheckSpectralKnee/testDefaultArgsCallRuns'                              }    false     false       true         0.072732    {1×1 struct}
+    {'testCheckSpectralKnee/testDefaultRunsOnToolboxNoiseWithIrasaBand'           }    true      false       false          1.4052    {1×1 struct}
+    {'testCheckSpectralKnee/testBandAboveIrasaLimitErrors'                        }    true      false       false         0.11153    {1×1 struct}
+    {'testCheckSpectralKnee/testLegacyResamplingKeepsOldBandAndWarns'             }    true      false       false         0.42824    {1×1 struct}
+    {'testCheckSpectralKnee/testTooShortResidualErrors'                           }    true      false       false       0.0079197    {1×1 struct}
+    {'testCheckSpectralKnee/testKneeInBandLogicConsistentWithBounds'              }    false     false       true         0.068336    {1×1 struct}
+    {'testCheckSpectralKnee/testBreakFreeNoiseIsPurePenalty'                      }    true      false       false         0.56903    {1×1 struct}
+    {'testCheckSpectralKnee/testKneeLocatedBelowAndInsideBand'                    }    true      false       false         0.60276    {1×1 struct}
+    {'testCheckSpectralKnee/testMarginalVerdictBand'                              }    true      false       false         0.12709    {1×1 struct}
+    {'testConvertScalingExponent/testKnownAnswersFGn'                             }    true      false       false        0.072282    {1×1 struct}
+    {'testConvertScalingExponent/testKnownAnswersFBm'                             }    true      false       false        0.013421    {1×1 struct}
+    {'testConvertScalingExponent/testClassFreeConversions'                        }    true      false       false        0.014095    {1×1 struct}
+    {'testConvertScalingExponent/testRoundTripsAndShape'                          }    true      false       false         0.17659    {1×1 struct}
+    {'testConvertScalingExponent/testHAndDNeedAClass'                             }    true      false       false        0.012993    {1×1 struct}
+    {'testConvertScalingExponent/testOutOfRangeIsAnError'                         }    true      false       false        0.034814    {1×1 struct}
+    {'testConvertScalingExponent/testBadInputsRejected'                           }    true      false       false         0.13553    {1×1 struct}
+    {'testConvertScalingExponent/testAgreesWithTheEstimatorsOnNoiseXu'            }    true      false       false        0.066805    {1×1 struct}
+    {'testEstimateIRASA/testMatchesSourceForSameSeed'                             }    false     false       true          0.15785    {1×1 struct}
+    {'testEstimateIRASA/testTwoOutputArity'                                       }    true      false       false         0.16664    {1×1 struct}
+    {'testEstimateIRASA/testCustomHsetRuns'                                       }    true      false       false        0.059505    {1×1 struct}
+    {'testEstimateIRASA/testDefaultFtInfoWhenNotRequested'                        }    true      false       false         0.11029    {1×1 struct}
+    {'testEstimateIRASA/testCompareFieldTripDegradesGracefullyWhenUnavailable'    }    true      false       false         0.24476    {1×1 struct}
+    {'testEstimateIRASA/testCompareFieldTripSuccessPathWhenAvailable'             }    false     false       true         0.052489    {1×1 struct}
+    {'testEstimateIRASA/testComparePMTMSuccessPath'                               }    true      false       false         0.21624    {1×1 struct}
+    {'testEstimateIRASA/testDefaultPmInfoWhenNotRequested'                        }    true      false       false         0.11494    {1×1 struct}
+    {'testEstimateIRASA/testPRawMatchesDirectPmtmCall'                            }    true      false       false         0.14884    {1×1 struct}
+    {'testEstimateIRASA/testNewOptionDefaultsAreUnchanged'                        }    true      false       false          0.2817    {1×1 struct}
+    {'testEstimateIRASA/testPrewhitenFixesBreakFreeOvershoot'                     }    true      false       false          5.6536    {1×1 struct}
+    {'testEstimateIRASA/testWelchRunsAndReturnsWelchGrid'                         }    true      false       false         0.17529    {1×1 struct}
+    {'testEstimateIRASA/testPrewhitenWithFieldTripErrors'                         }    true      false       false       0.0068835    {1×1 struct}
+    {'testEstimateIRASA/testResamplingDefaultIsIrasa'                             }    true      false       false         0.24973    {1×1 struct}
+    {'testEstimateIRASA/testLegacyResamplingWarns'                                }    true      false       false          0.1294    {1×1 struct}
+    {'testEstimateIRASA/testIrasaResamplingRemovesPeak'                           }    true      false       false          4.1996    {1×1 struct}
+    {'testEstimateIRASA/testIrasaResamplingAgreesOnPeakFreeNoise'                 }    true      false       false          3.9155    {1×1 struct}
+    {'testEstimateIRASA/testIrasaResamplingWithPrewhitenOnSteepBreakFree'         }    true      false       false          2.0704    {1×1 struct}
+    {'testEstimateIRASA/testIrasaResamplingMasksAboveValidRange'                  }    true      false       false          0.1939    {1×1 struct}
+    {'testEstimateIRASA/testIrasaResamplingBandTooHighErrors'                     }    true      false       false       0.0050599    {1×1 struct}
+    {'testEstimateIRASA/testSigmaOfUnitWhiteNoise'                                }    true      false       false          1.0386    {1×1 struct}
+    {'testEstimateIRASA/testPeakLeavesNoHumpInFractalSpectrum'                    }    true      false       false          1.2381    {1×1 struct}
+    {'testEstimateWhittleAlpha/testMatchesAlphaPWLWv001'                          }    false     false       true         0.098749    {1×1 struct}
+    {'testEstimateWhittleAlpha/testRecoversAlphaOnNoiseXu'                        }    true      false       false         0.16949    {1×1 struct}
+    {'testEstimateWhittleAlpha/testRecoversAlphaOnExactReference'                 }    true      false       false        0.081959    {1×1 struct}
+    {'testEstimateWhittleAlpha/testOracleKIsUsed'                                 }    true      false       false        0.012178    {1×1 struct}
+    {'testEstimateWhittleAlpha/testErrorsOnConstantInput'                         }    true      false       false       0.0061437    {1×1 struct}
+    {'testEstimateWhittleAlpha/testErrorsOnNaN'                                   }    true      false       false       0.0054384    {1×1 struct}
+    {'testEstimateWhittleAlpha/testErrorsOnBadBand'                               }    true      false       false       0.0047756    {1×1 struct}
+    {'testEstimateWhittleAlpha/testErrorsOnShortSeries'                           }    true      false       false        0.003923    {1×1 struct}
+    {'testEstimateWhittleAlpha/testWorksWithOnlyToolboxOnPath'                    }    true      false       false          1.3107    {1×1 struct}
+    {'testEstimateWhittleAlpha/testDfaPreEstimateKnownAnswers'                    }    true      false       false        0.010977    {1×1 struct}
+    {'testEstimateWhittleAlpha/testDifferencingOrderAndAccuracyOnExactReferences' }    true      false       false         0.11267    {1×1 struct}
+    {'testEstimateWhittleAlpha/testEstimateOnSearchBoundIsAnError'                }    true      false       false       0.0093305    {1×1 struct}
+    {'testEstimateWhittleAlpha/testFewerThanTenBinsIsAnError'                     }    true      false       false       0.0081652    {1×1 struct}
+    {'testEstimateWhittleAlpha/testSpreadMatchesHannVarianceFactor'               }    true      false       false         0.10103    {1×1 struct}
+    {'testEstimateWhittleAlpha/testHannTaperProtectsAgainstUnderDifferencing'     }    true      false       false        0.065259    {1×1 struct}
+    {'testEstimateWhittleAlpha/testPeakWarnsAndNamesTheWayOut'                    }    true      false       false         0.10489    {1×1 struct}
+    {'testEstimateWhittleAlpha/testNoFalseAlarmOnPeakFreeReferences'              }    true      false       false         0.20953    {1×1 struct}
+    {'testEstimateWhittleAlpha/testPeakThresholdFollowsFalseAlarmRate'            }    true      false       false        0.020273    {1×1 struct}
+    {'testHarmonicContent/testCountsTheTrueHarmonics'                             }    true      false       false        0.065642    {1×1 struct}
+    {'testHarmonicContent/testRatioIsLargeForHarmonicsAndNearOneBeyond'           }    true      false       false        0.007887    {1×1 struct}
+    {'testHarmonicContent/testNoHarmonicIsFlaggedAndFloorsAtOne'                  }    true      false       false       0.0065211    {1×1 struct}
+    {'testHarmonicContent/testCutChangesTheCount'                                 }    true      false       false        0.014281    {1×1 struct}
+    {'testHarmonicContent/testIsScaleInvariant'                                   }    true      false       false        0.022379    {1×1 struct}
+    {'testHarmonicContent/testTwoChannelsAverageAmplitudes'                       }    true      false       false        0.011259    {1×1 struct}
+    {'testHarmonicContent/testF0IsEstimatedWithABand'                             }    true      false       false        0.010201    {1×1 struct}
+    {'testHarmonicContent/testMonthlyUnits'                                       }    true      false       false        0.001263    {1×1 struct}
+    {'testHarmonicContent/testKmaxIsLimitedByNyquist'                             }    true      false       false       0.0018685    {1×1 struct}
+    {'testHarmonicContent/testErrorPaths'                                         }    true      false       false        0.022205    {1×1 struct}
+    {'testHarmonicContent/testChannelsAreAveragedNotFirstOnly'                    }    true      false       false        0.023588    {1×1 struct}
+    {'testHarmonicTemplate/testRemovesKnownFundamental'                           }    true      false       false        0.033236    {1×1 struct}
+    {'testHarmonicTemplate/testRemovesThreeHarmonicsWhenKIsThree'                 }    true      false       false       0.0054276    {1×1 struct}
+    {'testHarmonicTemplate/testHarmonicsAboveKStayInTheResidual'                  }    true      false       false       0.0026931    {1×1 struct}
+    {'testHarmonicTemplate/testResidualPlusFitIsTheRecord'                        }    true      false       false       0.0078472    {1×1 struct}
+    {'testHarmonicTemplate/testEndAnchoredCoversTheLastSample'                    }    true      false       false       0.0086103    {1×1 struct}
+    {'testHarmonicTemplate/testMatchesProjectRunnerForTwoAxes'                    }    true      false       false        0.013466    {1×1 struct}
+    {'testHarmonicTemplate/testChannelsAreIndependent'                            }    true      false       false       0.0094327    {1×1 struct}
+    {'testHarmonicTemplate/testWorksInAnotherUnitMonthlyData'                     }    true      false       false       0.0020127    {1×1 struct}
+    {'testHarmonicTemplate/testEstimatesF0InsideTheGivenBand'                     }    true      false       false       0.0027785    {1×1 struct}
+    {'testHarmonicTemplate/testErrorPaths'                                        }    true      false       false        0.028704    {1×1 struct}
+    {'testNoiseXu/testMatchesXuNoiseV002ForSameSeed'                              }    false     false       true         0.093906    {1×1 struct}
+    {'testNoiseXu/testMatchesGenerateCustomNoiseV004ForSameSeed'                  }    false     false       true         0.037826    {1×1 struct}
+    {'testNoiseXu/testZeroAmplitudeReturnsExactZeros'                             }    true      false       false       0.0036646    {1×1 struct}
+    {'testNoiseXu/testPhiOverrideRuns'                                            }    true      false       false       0.0036646    {1×1 struct}
+    {'testNoiseXu/testDefaultTwoArgCall'                                          }    true      false       false       0.0048612    {1×1 struct}
+    {'testNoiseXu/testRejectsNonPositiveN'                                        }    true      false       false        0.010668    {1×1 struct}
+    {'testNoiseXu/testRejectsPhiOutOfRange'                                       }    true      false       false        0.029361    {1×1 struct}
+    {'testNoiseXu/testPhiOneIsBreakFree'                                          }    true      false       false        0.051354    {1×1 struct}
+    {'testNoiseXu/testKnownAlphaRecoveryWithinTolerance'                          }    true      false       false        0.029964    {1×1 struct}
+    {'testReadmeAndExamples/testReadmeBlocksRunAsWritten'                         }    true      false       false          1.8148    {1×1 struct}
+    {'testReadmeAndExamples/testExamplesRun'                                      }    true      false       false           20.02    {1×1 struct}
+    {'testReadmeAndExamples/testDocPagesRun'                                      }    true      false       false          1.3677    {1×1 struct}
+    {'testReadmeAndExamples/testKneeExampleMatchesItsText'                        }    true      false       false         0.90842    {1×1 struct}
+    {'testShapeNoise/testMatchesSourceShapeXuLocalForSameSeed'                    }    false     false       true           0.1196    {1×1 struct}
+    {'testShapeNoise/testWhiteCarrierPreservesStd'                                }    true      false       false        0.020904    {1×1 struct}
+    {'testShapeNoise/testCustomFunctionHandleCarrier'                             }    true      false       false        0.015116    {1×1 struct}
+    {'testShapeNoise/testZeroVarianceResidualReturnsZeros'                        }    true      false       false       0.0054579    {1×1 struct}
+    {'testShapeNoise/testUnknownPhaseSourceErrors'                                }    true      false       false        0.012373    {1×1 struct}
+    {'testShapeNoise/testInvalidCarrierLengthErrors'                              }    true      false       false        0.011422    {1×1 struct}
+    {'testShapeNoise/testPinknoiseWarnsOnAlphaMismatchWhenAvailable'              }    true      false       false          0.4578    {1×1 struct}
+    {'testShapeNoise/testDspInRangeAlphaRunsCleanly'                              }    true      false       false         0.40718    {1×1 struct}
+    {'testShapeNoise/testDspOutOfRangeAlphaClampsWithWarning'                     }    true      false       false        0.055339    {1×1 struct}
+    {'testShapeNoise/testDspUnavailableErrorsCleanly'                             }    false     false       true         0.057189    {1×1 struct}
+    {'testShapeNoise/testMatchesEndMatchedSourceForSameSeed'                      }    false     false       true         0.042993    {1×1 struct}
+    {'testShapeNoise/testSegmentRulesMatchSource'                                 }    false     false       true         0.032173    {1×1 struct}
+    {'testShapeNoise/testBudgetRuleNeedsBudget'                                   }    true      false       false        0.010111    {1×1 struct}
+    {'testShapeNoise/testDerivativeNoiseAndAlphaHeldOnSteepNoise'                 }    true      false       false         0.17315    {1×1 struct}
+    {'testShapeNoise/testSegmentBookkeeping'                                      }    true      false       false        0.013163    {1×1 struct}
+    {'testShapeNoise/testTwoChannelsShareLength'                                  }    true      false       false         0.05231    {1×1 struct}
+    {'testShapeNoise/testReproducibleWithSeed'                                    }    true      false       false       0.0078988    {1×1 struct}
+    {'testShapeNoise/testUncoveredZeroTailErrors'                                 }    true      false       false       0.0070872    {1×1 struct}
+    {'testShapeNoise/testPhaseSourceIsLegacyOnly'                                 }    true      false       false       0.0050165    {1×1 struct}
+    {'testShapeNoise/testConstantChannelErrors'                                   }    true      false       false        0.005122    {1×1 struct}
+    {'testShapeNoise/testNoEndMatchedSegmentErrors'                               }    true      false       false         0.01076    {1×1 struct}
+    {'testShapeNoise/testSegmentTooShortForAlphaErrors'                           }    true      false       false        0.095155    {1×1 struct}
+    {'testShapeNoise/testDefaultMinLengthIs120'                                   }    true      false       false        0.024064    {1×1 struct}
+    {'testShapeNoise/testAlphaSizeErrors'                                         }    true      false       false        0.013979    {1×1 struct}
+    {'testShapeNoise/testNoAcceptedDrawWarnsAndReturnsNaN'                        }    true      false       false        0.024299    {1×1 struct}
+    {'testShapeNoise/testPeakInBandWarnsOncePerChannel'                           }    true      false       false         0.13171    {1×1 struct}
+    {'testShapeNoise/testLegacyWarns'                                             }    true      false       false        0.023281    {1×1 struct}
+    {'testShapeNoiseGenericity/testDefaultBandWarnsAndKinematicIsSilent'          }    true      false       false        0.044737    {1×1 struct}
+    {'testShapeNoiseGenericity/testKinematicKeywordEqualsTheDefaultBand'          }    true      false       false        0.023742    {1×1 struct}
+    {'testShapeNoiseGenericity/testExplicitBandInAnotherUnit'                     }    true      false       false        0.008246    {1×1 struct}
+    {'testShapeNoiseGenericity/testInvalidBandsAreErrors'                         }    true      false       false        0.021319    {1×1 struct}
+    {'testShapeNoiseGenericity/testCheckUncoveredOptionControlsTheZeroTailError'  }    true      false       false        0.018686    {1×1 struct}
+    {'testShapeNoiseGenericity/testBandEdgesAreExclusive'                         }    true      false       false        0.007229    {1×1 struct}
+    {'testShapeNoiseGenericity/testBandActuallyUsedIsReported'                    }    true      false       false        0.010737    {1×1 struct}
+    {'testShapeNoiseGenericity/testZeroTailThresholdIsThreeSamples'               }    true      false       false        0.020188    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testExactLowerTailProbabilitiesAgainstMargin'  }    true      false       false         0.05418    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testExactLowerTailProbabilitiesAgainstStandard'}    true      false       false        0.012573    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testCriticalCountsAtDefaults'                  }    true      false       false        0.042917    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testDefaults'                                  }    true      false       false       0.0023039    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testPValueRisesWithAcceptance'                 }    true      false       false        0.033089    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testSilentAtOrAboveMargin'                     }    true      false       false       0.0097927    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testBelowStandardIsReportedButNeverWarns'      }    true      false       false        0.016047    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testBelowMinimumReportsWithoutTesting'         }    true      false       false        0.002991    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testMinimumIsInclusive'                        }    true      false       false       0.0066038    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testMinChannelsOption'                         }    true      false       false        0.006919    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testLevelOption'                               }    true      false       false       0.0052787    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testMarginOption'                              }    true      false       false       0.0043368    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testStandardOptionChangesOnlyTheReport'        }    true      false       false       0.0023218    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testTriesKnownAnswers'                         }    true      false       false       0.0035843    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testPerDrawAcceptanceKnownAnswer'              }    true      false       false       0.0028303    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testCountsChannelsNotCalls'                    }    true      false       false       0.0072892    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testStructArrayEqualsCellArray'                }    true      false       false        0.018644    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testBadInputsError'                            }    true      false       false        0.040307    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testBadOptionsError'                           }    true      false       false        0.087125    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testLegacyInfoIsRefused'                       }    true      false       false         0.01753    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testWarningSaysWhatItMeansAndWhatToDo'         }    true      false       false        0.015638    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testVeryLowAcceptanceWarnsAndNeverErrors'      }    true      false       false         0.01119    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testSilentOnRandomWalks'                       }    true      false       false          0.2959    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testWarnsOnBatchWithUnreachableTargets'        }    true      false       false         0.27865    {1×1 struct}
+    {'testSummariseShapeNoiseBatch/testNoAcceptedDrawMessageNamesTheLimits'       }    true      false       false        0.020273    {1×1 struct}
+    {'testToolboxSelfContained/testCoreFunctionsWorkWithOnlyToolboxOnPath'        }    true      false       false         0.54604    {1×1 struct}
+    {'testWrappers/testNoTemplateEqualsShapeNoise'                                }    true      false       false        0.063869    {1×1 struct}
+    {'testWrappers/testTemplateStepRunsAndRemovesPeriodicPart'                    }    true      false       false        0.013046    {1×1 struct}
+    {'testWrappers/testF0BandIsEstimated'                                         }    true      false       false        0.013071    {1×1 struct}
+    {'testWrappers/testMonthlySeriesLoads'                                        }    true      false       false       0.0093516    {1×1 struct}
+    {'testWrappers/testLastYearIsTheLastCompleteYear'                             }    true      false       false       0.0090205    {1×1 struct}
+    {'testWrappers/testYearRangeRestriction'                                      }    true      false       false       0.0070073    {1×1 struct}
+    {'testWrappers/testKnownMonthValue'                                           }    true      false       false        0.003178    {1×1 struct}
+    {'testWrappers/testCetSurrogateRunsInMonthlyUnits'                            }    true      false       false       0.0074363    {1×1 struct}
+    {'testWrappers/testBadBandIsAnError'                                          }    true      false       false       0.0053403    {1×1 struct}
+    {'testWrappers/testMissingMonthInsideTheChosenYearsIsAnError'                 }    true      false       false        0.028971    {1×1 struct}
+    {'testWrappers/testKRequiredWhenATemplateIsStripped'                          }    true      false       false        0.012515    {1×1 struct}
+    {'testWrappers/testKRequiredMessagePointsToHarmonicContent'                   }    true      false       false        0.012564    {1×1 struct}
+    {'testWrappers/testExplicitKIsExactlyTheTwoStepPath'                          }    true      false       false        0.028843    {1×1 struct}
+    {'testWrappers/testCetKRequired'                                              }    true      false       false        0.013563    {1×1 struct}
+    {'testWrappers/testCetKChosenWithHarmonicContent'                             }    true      false       false        0.037371    {1×1 struct}
+
+TOTAL 168 passed 156 failed 0 incomplete 12

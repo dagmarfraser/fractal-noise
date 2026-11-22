@@ -20,6 +20,7 @@ that history is not lost, just relocated to prose rather than the filename.
 - README, HadCET: the windowed template also removes variability slower than about `Window` cycles, so long-memory questions use
   monthly anomalies (alpha 0.39, H 0.70 over 1-50 years, 1659-2025), compared with the published CET analyses (Rypdal, Østvand & Rypdal 2013: H 0.65 +/- 0.07 on deseasonalised monthly CET; González-Hidalgo et al. 2020: H 0.72-0.80 on annual CET; citations checked against the papers 2026-11-22, `compareCETPublished_v001.m`).
   Validation: `exploreHadCET_v001.m`, `compareScalingExponents_v001.m`, `checkWhittleBandEdge_v001.m`, `checkNyquistKernel_v001.m`.
+- Band edge: at fs 100 an upper edge of 20 Hz (40% of Nyquist) biased alpha by up to about 0.1 and the sine kernel did not remove it (`checkNyquistKernel_v002.m`). README "Choosing the band" and the `shapeNoise` help advise an upper edge below about 25% of Nyquist; the `"kinematic"` band exceeds that below fs 160 Hz. The lambda kernel is kept.
 
 ### Generality: `shapeNoise` for data that are not hand movement, and `harmonicTemplate`
 
