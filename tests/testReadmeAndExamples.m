@@ -5,7 +5,7 @@ classdef testReadmeAndExamples < matlab.unittest.TestCase
 %
 % The README code blocks run top to bottom in one workspace, from the repository folder, as a reader would paste them.
 % The block that calls runtests is skipped (it would run this suite again). The quick start and the worked story must run
-% without a warning, and the stated results are checked: K = 2 and a knee below the band in the story, K = 2 for HadCET.
+% without a warning, and the stated results are checked: K = 2 and a knee below the band in the story, K = 2, alpha 0.39 and H 0.70 for HadCET.
 % Examples and documentation pages run in their own workspaces with figures hidden; the knee example's three cases are
 % checked against what its text says.
 
@@ -39,6 +39,8 @@ classdef testReadmeAndExamples < matlab.unittest.TestCase
             testCase.verifyLessThan(ws.knee.kneeHz, 0.5, "Worked story: knee stated near 0.3 Hz.");
             testCase.verifyEqual(ws.S.nChannels, 100);
             testCase.verifyEqual(ws.Kc, 2, "HadCET example: Kc stated as 2.");
+            testCase.verifyEqual(ws.alphaCET, 0.39, "AbsTol", 0.005, "HadCET anomalies: alpha stated as 0.39.");
+            testCase.verifyEqual(ws.H, 0.70, "AbsTol", 0.005, "HadCET anomalies: H stated as 0.70.");
         end
 
         function testExamplesRun(testCase)

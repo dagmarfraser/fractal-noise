@@ -103,6 +103,18 @@ cet = cetNoiseWrapper(LoadOnly=true, FirstYear=1900, LastYear=2025);   % monthly
 n = cetNoiseWrapper(FirstYear=1900, LastYear=2025, K=Kc);
 ```
 
+The template is fitted in windows of `Window` cycles (4 years here), so it also removes variability slower than about 4 years. That suits a null model on shorter timescales, but it is the wrong residual for asking whether temperature has long memory: over 2 to 50 year periods the template residual looks strongly anti-persistent (alpha about -1), which is the template's doing, not the climate's. For that question, remove only each calendar month's mean and fit a low band:
+
+```matlab
+cet = cetNoiseWrapper(LoadOnly=true);   % 1659 onwards
+anom = cet.value;
+for m = 1:12, s = cet.month == m;  anom(s) = anom(s) - mean(anom(s)); end
+alphaCET = estimateWhittleAlpha(anom, 12, 0.02, 1);   % periods of 1 to 50 years: alpha 0.39
+H = (alphaCET + 1) / 2;   % 0.70
+```
+
+For a stationary series the spectral exponent, the Hurst exponent H, the long-memory parameter d, the DFA exponent a and the fractal (Hausdorff) dimension D of the series' cumulative sum are one quantity in different units: alpha = 2H - 1 = 2d = 2a - 1, and D = 2 - H (for a random-walk-like series, alpha = 2H + 1 and D = 2 - H of the series itself). This holds for self-affine Gaussian series with one scaling regime; in general D measures roughness at small scales and H memory at large scales, and they can differ (Gneiting & Schlather 2004, SIAM Review). Here H 0.70 (D 1.30) sits between published values for the Central England series and for land temperature: H 0.72-0.80 for annual CET 1659-2017 (Gonzalez Hidalgo et al. 2020, Cuadernos de Investigacion Geografica) and H about 0.65 for local and regional land records (Rypdal, Østvand & Rypdal 2013, J. Geophys. Res. Atmos.). Keep the upper band edge well below Nyquist: local Whittle assumes a power law near zero frequency, and with this record's length an upper edge at 5 cycles per year (83% of Nyquist) biased exact references by up to 0.45 (`validation/checkWhittleBandEdge_v001.m`; the band 0.02-1 kept every bias within 0.03).
+
 ## Which estimator to use
 
 | Your signal | Use |
