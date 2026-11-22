@@ -22,7 +22,8 @@ function y = convertScalingExponent(x, from, to, options)
 %
 %   CAVEATS. These are identities for self-affine Gaussian processes. In data, D is usually measured at small scales (roughness)
 %   and H, d, DFA and alpha at large scales (memory); they agree only if the series scales the same way across both, and in
-%   general they need not (Gneiting & Schlather 2004). Converting a published value assumes the authors' estimator measured the
+%   general they need not (Gneiting & Schlather 2004, who advise against estimating D from H or the reverse through
+%   D = 2 - H: a D computed here is nominal, valid only under self-similarity, not a measured roughness). Converting a published value assumes the authors' estimator measured the
 %   same thing over a comparable range of scales; R/S, for example, is biased upwards for anti-persistent series. The
 %   conversion carries no uncertainty: convert an interval's ends, not its centre alone.
 %
