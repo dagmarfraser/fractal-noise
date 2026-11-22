@@ -8,7 +8,7 @@ session history, which is not this toolbox's situation. Each function's
 docstring states which specific internal vintage it was extracted from, so
 that history is not lost, just relocated to prose rather than the filename.
 
-## v2.0.0 -- unreleased (branch v2.0.0)
+## v2.0.0 -- 2026-11-22
 
 ### New: `convertScalingExponent` (2026-11-22)
 

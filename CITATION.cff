@@ -12,7 +12,7 @@ repository-code: "https://github.com/dagmarfraser/fractal-noise"
 url: "https://www.mathworks.com/matlabcentral/fileexchange/184251"
 license: MIT
 version: 2.0.0
-date-released: 2026-11-21
+date-released: 2026-11-22
 keywords:
   - colored noise
   - 1/f noise
