@@ -164,6 +164,21 @@
         ]
     },
 
+    "convertScalingExponent":
+    {
+        "inputs":
+        [
+            {"name":"x", "kind":"required", "type":["numeric"]},
+            {"name":"from", "kind":"required", "type":["choices={'alpha','d','DFA','H','D'}"]},
+            {"name":"to", "kind":"required", "type":["choices={'alpha','d','DFA','H','D'}"]},
+            {"name":"Class", "kind":"namevalue", "type":["choices={'fGn','fBm'}"]}
+        ],
+        "outputs":
+        [
+            {"name":"y", "type":["numeric"]}
+        ]
+    },
+
     "estimateWhittleAlpha":
     {
         "inputs":

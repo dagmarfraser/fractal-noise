@@ -24,7 +24,7 @@ here = fileparts(mfilename("fullpath"));  root = fileparts(here);
 M = mutants();
 if options.Only ~= "", M = M(contains([M.file], options.Only)); end
 tests = ["testHarmonicTemplate" "testShapeNoiseGenericity" "testWrappers" "testHarmonicContent" "testShapeNoise" "testSummariseShapeNoiseBatch" ...
-         "testNoiseXu" "testEstimateWhittleAlpha" "testEstimateIRASA" "testCheckSpectralKnee"];
+         "testNoiseXu" "testEstimateWhittleAlpha" "testEstimateIRASA" "testCheckSpectralKnee" "testConvertScalingExponent"];
 
 oldPath = path;  cleanupPath = onCleanup(@() path(oldPath));  %#ok<NASGU>
 oldWarn = warning("on", "all");  cleanupWarn = onCleanup(@() warning(oldWarn));  %#ok<NASGU>   % warnings must be ON: several tests verify them
@@ -80,7 +80,7 @@ HT = ["testHarmonicTemplate" "testWrappers"];
 SN = ["testShapeNoise" "testShapeNoiseGenericity" "testWrappers"];
 HC = "testHarmonicContent";
 SB = "testSummariseShapeNoiseBatch";
-NX = "testNoiseXu";  WA = "testEstimateWhittleAlpha";  IR = "testEstimateIRASA";  CK = "testCheckSpectralKnee";
+CS = "testConvertScalingExponent";  NX = "testNoiseXu";  WA = "testEstimateWhittleAlpha";  IR = "testEstimateIRASA";  CK = "testCheckSpectralKnee";
 M = [
  mk("T1", "harmonicTemplate", HT, "drop the Hann weights", "han = 0.5 * (1 - cos(2 * pi * (0:win - 1)' / (win - 1)));", "han = ones(win, 1);")
  mk("T2", "harmonicTemplate", HT, "remove one harmonic from the design", "for h = 1:K, D = [D,", "for h = 1:max(K - 1, 0), D = [D,")
@@ -148,6 +148,14 @@ M = [
  mk("I4", "estimateIRASA", IR, "prewhitened copies not recoloured", "geoMeans(:, hi) = geoMeans(:, hi) ./ gainH;", "geoMeans(:, hi) = geoMeans(:, hi);")
  mk("I5", "estimateIRASA", IR, "noise variance halved", "noiseVar = trapz(fVec(validMask), pFractal(validMask)) * 2;", "noiseVar = trapz(fVec(validMask), pFractal(validMask));")
  mk("K1", "checkSpectralKnee", CK, "strong threshold -2.5 instead of -10", "if deltaAIC < -10", "if deltaAIC < -2.5")
+ mk("V1", "convertScalingExponent", CS, "fGn H as alpha = 2H (not 2H - 1)", "a = 2 * x - 1 + 2 * fBm;", "a = 2 * x + 2 * fBm;")
+ mk("V2", "convertScalingExponent", CS, "H ignores the class on output", "case ""H"",     y = (a + 1 - 2 * fBm) / 2;", "case ""H"",     y = (a + 1) / 2;")
+ mk("V3", "convertScalingExponent", CS, "D ignores the class on input", "a = 3 - 2 * x + 2 * fBm;", "a = 3 - 2 * x;")
+ mk("V4", "convertScalingExponent", CS, "DFA not converted (alpha = 2a)", "case ""DFA"",   a = 2 * x - 1;", "case ""DFA"",   a = 2 * x;")
+ mk("V5", "convertScalingExponent", CS, "no class required for H or D", "if needsClass && options.Class == """"", "if false")
+ mk("V6", "convertScalingExponent", CS, "class range not checked", "if any(a <= lo | a >= hi, ""all"")", "if false")
+ mk("V7", "convertScalingExponent", CS, "D ignores the class on output", "case ""D"",     y = (3 - a + 2 * fBm) / 2;", "case ""D"",     y = (3 - a) / 2;")
+ mk("V8", "convertScalingExponent", CS, "d taken as alpha (not alpha/2)", "case ""d"",     a = 2 * x;", "case ""d"",     a = x;")
  mk("K2", "checkSpectralKnee", CK, "knee model penalised as 2 parameters", "aicKnee = nWide * log(bestRss / nWide) + 2 * 3;", "aicKnee = nWide * log(bestRss / nWide) + 2 * 2;")
  mk("K3", "checkSpectralKnee", CK, "kneeInBand ignores the lower band edge", "result.kneeInBand = kneeHz >= fBandLow && kneeHz <= fHigh;", "result.kneeInBand = kneeHz <= fHigh;")
  mk("K4", "checkSpectralKnee", CK, "too-short residual allowed (8, not 80)", "if nSamples < 80", "if nSamples < 8")

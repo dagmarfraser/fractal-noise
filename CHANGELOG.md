@@ -10,6 +10,17 @@ that history is not lost, just relocated to prose rather than the filename.
 
 ## v2.0.0 -- unreleased (branch v2.0.0)
 
+### New: `convertScalingExponent` (2026-11-22)
+
+- Converts between the spectral exponent alpha, the long-memory parameter d (alpha/2), the DFA exponent ((alpha + 1)/2), the Hurst
+  exponent H and the fractal (Hausdorff) dimension D. H and D require `Class="fGn"` (stationary, -1 < alpha < 1: alpha = 2H - 1, D of
+  the cumulative sum = 2 - H) or `Class="fBm"` (1 < alpha < 3: alpha = 2H + 1, D = 2 - H); a missing class
+  (`convertScalingExponent:classRequired`) or a value outside the class's range or on an odd-integer boundary
+  (`convertScalingExponent:outOfRange`) is an error. `testConvertScalingExponent` (8 tests); mutants V1-V8.
+- README, HadCET: the windowed template also removes variability slower than about `Window` cycles, so long-memory questions use
+  monthly anomalies (alpha 0.39, H 0.70 over 1-50 years, 1659-2025), compared with published CET and land-temperature H values.
+  Validation: `exploreHadCET_v001.m`, `compareScalingExponents_v001.m`, `checkWhittleBandEdge_v001.m`, `checkNyquistKernel_v001.m`.
+
 ### Generality: `shapeNoise` for data that are not hand movement, and `harmonicTemplate`
 
 An API audit (2026-11-17) found the defaults tied to the first use case (hand-movement residuals, Hz).
