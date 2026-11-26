@@ -1,11 +1,7 @@
 function noise = noiseXu(N, alpha, amplitude, fs, options)
 %NOISEXU Generate 1/f^alpha colored noise via Xu (2019) GGM fractional differencing.
 %
-% Toolbox extraction of PowerLawSimulationPreReg's XuNoise_v002 (core
-% generator) with generateCustomNoise_v004's wrapper folded into this
-% signature. There is no separate wrapper function in the toolbox; Phi
-% is exposed as an optional name-value argument instead of a positional
-% one, so the common 4-argument call is unchanged from the old wrapper.
+% Phi is a name-value argument, so the common 4-argument call needs nothing else.
 %
 % SYNTAX:
 %   noise = noiseXu(N, alpha)
@@ -18,9 +14,8 @@ function noise = noiseXu(N, alpha, amplitude, fs, options)
 %   alpha     - Spectral exponent (full alpha; converted internally to
 %               fractional memory parameter d = alpha/2)
 %   amplitude - Target standard deviation of output signal (>=0; default 1.0)
-%   fs        - Sampling frequency in Hz, retained for interface
-%               compatibility with generateCustomNoise_v004; not used in
-%               the generation maths itself (default 1.0)
+%   fs        - Sampling frequency in Hz, accepted for interface
+%               convenience; not used in the generation maths (default 1.0)
 %   Phi       - Name-value. GGM parameter, range (0, 1]. Default 0.99
 %               (red-leakage mitigation per Xu 2019 Appendix A). Phi < 1
 %               gives a generalised Gauss-Markov spectrum: flat below a
@@ -48,14 +43,12 @@ function noise = noiseXu(N, alpha, amplitude, fs, options)
 %
 % NOTES:
 %   - No alpha-range validation is enforced here by design: this is a
-%     stress-test-capable generator (matching XuNoise_v002 behaviour).
+%     stress-test-capable generator.
 %     Numerical breakdown (NaN/Inf) is the empirical failure signal and
 %     is the caller's responsibility to catch.
 %   - amplitude=0 returns an exact zero vector, not a degenerate
 %     near-zero-variance draw.
-%   - fs is accepted but unused in the generation maths; it exists
-%     purely so callers migrating from generateCustomNoise_v004 do not
-%     need to change their call sites.
+%   - fs is accepted but unused in the generation maths.
 %
 % REFERENCES:
 %   Xu, C. (2019). An Easy Algorithm to Generate Colored Noise Sequences.
@@ -70,14 +63,12 @@ function noise = noiseXu(N, alpha, amplitude, fs, options)
 % See also: shapeNoise, estimateIRASA, estimateWhittleAlpha
 %
 % Toolbox: fractalnoise
-% Extracted from: src/functions/XuNoise_v002.m + generateCustomNoise_v004.m
-% (PowerLawSimulationPreReg, session 51/52)
 
 arguments
     N (1, 1) double {mustBeInteger, mustBePositive}
     alpha (1, 1) double
     amplitude (1, 1) double {mustBeNonnegative} = 1.0
-    fs (1, 1) double {mustBePositive} = 1.0 %#ok<INUSA> intentionally unused; kept for call-site compatibility with generateCustomNoise_v004
+    fs (1, 1) double {mustBePositive} = 1.0 %#ok<INUSA> intentionally unused; kept for call-site compatibility
     options.Phi (1, 1) double {mustBeGreaterThan(options.Phi, 0), mustBeLessThanOrEqual(options.Phi, 1)} = 0.99
 end
 

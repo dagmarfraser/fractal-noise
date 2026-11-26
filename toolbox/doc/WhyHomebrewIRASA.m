@@ -13,7 +13,7 @@
 %[text] It was not independent. With the old resampling, HB **was** PM apart from interpolation, so the agreement was close to an identity. Two further cautions apply to those numbers:
 %[text] - They were measured on default `noiseXu` output, which has a low-frequency break (see the `noiseXu` help). The break hides leakage that appears on break-free spectra.
 %[text] - The "verified for alpha in \[-2, 6\]" statement that rested on them is withdrawn. \
-%[text] The table is kept in the pre-reg project (`docs/README_IRASAThreeWayAgreement_v001.md`) as a record of the legacy code, and can be reproduced with `Resampling="legacy"`.
+%[text] The legacy behaviour can be reproduced with `Resampling="legacy"`.
 %[text] ## What has been checked for v2.0.0
 %[text] All on `noiseXu` output, N = 3000, fs = 240 Hz, band 1-20 Hz, in the toolbox test suite (`tests/testEstimateIRASA.m`):
 checked = table( ...

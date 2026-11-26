@@ -1,12 +1,7 @@
 function result = checkSpectralKnee(resid, fs, options)
 %CHECKSPECTRALKNEE Lorentzian-vs-fixed spectral knee diagnostic (single trial).
 %
-% Toolbox generalisation of PowerLawSimulationPreReg's
-% checkLorentzianKnee_v001.m per-trial fitting core (~lines 90-140:
-% lorentz_log10 model + per-trial fminsearch fit). The source script's
-% dataset-loop, import, and figure-generation scaffolding is NOT carried
-% over -- this function takes one residual series in and returns one
-% diagnostic result out; call it per trial from your own loop.
+% One residual series in, one diagnostic result out; call it once per trial from your own loop.
 %
 % BACKGROUND (Preston, Smith & Voytek, 2026, Nature Human Behaviour):
 %   Neural field potential spectra often follow a Lorentzian (kneed) form
@@ -78,16 +73,11 @@ function result = checkSpectralKnee(resid, fs, options)
 % NOTES:
 %   - Fail Loud, Never Fake: if the residual is too short or the fractal
 %     PSD yields fewer than 5 valid bins in the wide band, this function
-%     errors rather than returning a degraded/placeholder result. The
-%     source script's per-trial loop silently skipped such trials
-%     (acceptable in a many-trials batch context); a single-call function
-%     has no such context to skip within, so it surfaces the failure.
+%     errors rather than returning a degraded/placeholder result.
 %
 % See also: estimateIRASA
 %
 % Toolbox: fractalnoise
-% Extracted from: src/checkLorentzianKnee_v001.m (per-trial fitting core)
-% (PowerLawSimulationPreReg, session 52)
 % Citation: Preston, M., Smith, S. & Voytek, B. (2026). Potential
 %   mechanisms and functional significance of aperiodic neural activity.
 %   Nature Human Behaviour.

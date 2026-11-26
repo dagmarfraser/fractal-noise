@@ -1,12 +1,7 @@
 function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x, fs, fLow, fHigh, options)
 %ESTIMATEIRASA IRASA spectral-exponent and noise-magnitude estimator.
 %
-% Toolbox wrap of PowerLawSimulationPreReg's iraAlphaSigma_v003.m (not
-% v001 -- v003 adds the pFractal/fVec outputs needed for Lorentzian-knee
-% work at no downside; same core estimator otherwise).
-%
-% CHANGED IN v2.0.0 (bug fix): up to v1.2.0 this function, like its
-% source, did NOT remove oscillatory peaks. It took the PSD of each
+% CHANGED IN v2.0.0 (bug fix): up to v1.2.0 this function did NOT remove oscillatory peaks. It took the PSD of each
 % resampled copy at its true rate (fs*h, fs/h) and interpolated back to
 % the same Hz axis, so peaks never moved and the median over Hset had
 % nothing to reject; the result was a PSD slope fit. The default is now
@@ -44,9 +39,8 @@ function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x,
 %           agreement cannot rule out both sharing a resampling-median
 %           blind spot. ComparePMTM holds the PSD estimator fixed
 %           (pmtm, same as HB) and removes resampling-median entirely,
-%           isolating that step as the variable under test -- see
-%           README_IRASAThreeWayAgreement_v001.md Section 2.
-%   PSD   - Name-value, "pmtm" (default, unchanged from source) or
+%           isolating that step as the variable under test.
+%   PSD   - Name-value, "pmtm" (default) or
 %           "welch" (Hann, 50% overlap, segment min(1024, floor(N/2))
 %           samples at fs; resampled copies keep the same segment
 %           duration). Applies to every PSD inside IRASA and to pRaw.
@@ -65,8 +59,8 @@ function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x,
 %           Requires fHigh*max(Hset) < fs/2 (errors if not); pFractal is
 %           NaN from fs/(2*max(Hset)) upward, where the up-sampled copies
 %           hold no signal, so sigmaEst covers only the range below it.
-%           "legacy" is the behaviour of v1.2.0 and earlier, and of the
-%           source iraAlphaSigma_v001 to v003, bit for bit (with PSD and
+%           "legacy" is the behaviour of v1.2.0 and earlier,
+%           bit for bit (with PSD and
 %           Prewhiten at their defaults). It is NOT IRASA: each resampled
 %           copy is labelled with its true rate (fs*h, fs/h), so every
 %           copy estimates the same spectrum at the same frequencies,
@@ -144,8 +138,7 @@ function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x,
 %   visible warning banner (Fail Loud, Never Fake: the degraded mode is
 %   disclosed, not silently skipped). The `which('ft_defaults')` gate
 %   (not `which('ft_freqanalysis')`) is used to detect FieldTrip
-%   availability, following the corrected pattern in
-%   benchmarkIRASA_v004.m: ft_freqanalysis.m sits in the FieldTrip root
+%   availability: ft_freqanalysis.m sits in the FieldTrip root
 %   and `which` can find it before ft_defaults has run, but FieldTrip's
 %   internal private/ utility calls will still fail until ft_defaults has
 %   added them to the path. Checking for ft_defaults itself is the
@@ -154,10 +147,6 @@ function [alphaEst, sigmaEst, pFractal, fVec, ftInfo, pmInfo] = estimateIRASA(x,
 % See also: noiseXu, checkSpectralKnee, estimateWhittleAlpha
 %
 % Toolbox: fractalnoise
-% Extracted from: src/functions/iraAlphaSigma_v003.m (algorithm inlined
-% below as a local function -- the toolbox does not depend on the
-% original file existing outside its own tree)
-% (PowerLawSimulationPreReg, session 52)
 % Citation: Wen, H., & Liu, Z. (2016). Separating Fractal and
 %   Oscillatory Components in the Power Spectrum of Neurophysiological
 %   Signal. Brain Topography, 29(1), 13-26.
@@ -220,8 +209,7 @@ function pmInfo = estimateIRASAPmtmCompare(fVec, pRaw, fLow, fHigh, alphaEst)
 %   Uses the same un-resampled pmtm PSD (pRaw, fVec) that
 %   estimateIRASACore already computes once at h=1 before entering the
 %   resampling-median loop -- no extra pmtm call. Isolates the
-%   resampling-median step as the variable under test against alphaEst
-%   (see README_IRASAThreeWayAgreement_v001.md Section 2, "PM").
+%   resampling-median step as the variable under test against alphaEst.
 
 fitMask = fVec >= fLow & fVec <= fHigh & ~isnan(pRaw) & pRaw > 0;
 if sum(fitMask) < 3
@@ -246,7 +234,7 @@ end
 
 function ftInfo = estimateIRASAFieldTripCompare(x, fs, fLow, fHigh, hset, alphaEst)
 %ESTIMATEIRASAFIELDTRIPCOMPARE Optional FieldTrip IRASA comparison panel.
-%   Availability gate follows benchmarkIRASA_v004.m: check ft_defaults,
+%   Availability gate: check ft_defaults,
 %   not ft_freqanalysis (see FIELDTRIP DEPENDENCY POLICY above).
 
 if isempty(which("ft_defaults"))
@@ -319,13 +307,11 @@ ftInfo = struct("available", true, "alphaFT", alphaFT, "gapHBFT", gapHBFT, ...
 end
 
 function [alphaEst, sigmaEst, pFractal, fVec, pRaw] = estimateIRASACore(x, fs, fLow, fHigh, hset, psdMethod, k, resampling)
-%ESTIMATEIRASACORE Inlined copy of iraAlphaSigma_v003's IRASA algorithm.
-%   Bundled here, not called externally, so the toolbox has no dependency
-%   on PowerLawSimulationPreReg's src/functions/ directory existing on
-%   the path. With resampling="legacy", psdMethod="pmtm" and k=0 the
-%   algorithm is unchanged from source and the output is bit-identical
-%   to it; that source labels the resampled copies with their true rates
-%   and so does not remove peaks (see the main help).
+%ESTIMATEIRASACORE The IRASA algorithm, bundled as a local function.
+%   With resampling="legacy", psdMethod="pmtm" and k=0 the output is
+%   bit-identical to that of v1.2.0 and earlier, which labels the resampled
+%   copies with their true rates and so does not remove peaks (see the main
+%   help).
 %
 %   psdMethod="welch": every PSD (original, up- and down-sampled) is a
 %   Hann-window Welch estimate with 50% overlap and the same segment

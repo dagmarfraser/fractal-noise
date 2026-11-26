@@ -1,12 +1,11 @@
 function [alphaEst, kUsed, info] = estimateWhittleAlpha(x, fs, fLow, fHigh, options)
 %ESTIMATEWHITTLEALPHA Prewhitened, band-limited local Whittle estimate of a spectral exponent.
 %
-% Toolbox wrap of PowerLawSimulationPreReg's alphaPWLW_v001.m and dfaAlpha_v001.m (2026-11-08); the numerics
-% are unchanged from source. Built because whole-record multitaper spectra, and IRASA computed on them
+% Whole-record multitaper spectra, and IRASA computed on them
 % (estimateIRASA), are biased at steep alpha when the noise has no low-frequency break: on exact
 % k-fold-integrated fGn they read -2 to +4 off at alpha 4-6.5, depending on fs and N. This estimator recovers
 % the band-limited exponent within +/-0.11 on exact references and on noiseXu output (fs 133/240 Hz,
-% N 1000/3000, alpha 2.5-6.5). See the fractal-noise validation plan v008, findings F2-F4.
+% N 1000/3000, alpha 2.5-6.5).
 %
 % METHOD:
 %   1. Pre-estimate alpha with DFA of order DFAOrder (default 3; valid for alpha < 2*DFAOrder + 1, Kiyono 2015).
@@ -145,8 +144,8 @@ r = ratio(k);  thr = x(k);  fPk = f(k);
 end
 
 function a = dfaAlphaLocal(x, order)
-% DFA of the given order as a spectral exponent alpha = 2*Hfluct - 1 (copy of dfaAlpha_v001; MATLAB twin of the
-% fractal-noise stage-1 R dfaN): 15 log-spaced box sizes 10..N/10, non-overlapping boxes, OLS of log F on log s.
+% DFA of the given order as a spectral exponent alpha = 2*Hfluct - 1:
+% 15 log-spaced box sizes 10..N/10, non-overlapping boxes, OLS of log F on log s.
 y = cumsum(x - mean(x));  n = numel(y);
 if n < 100, error('estimateWhittleAlpha:short', 'Series too short for the DFA pre-estimate (N = %d, need >= 100).', n); end
 s = unique(round(exp(linspace(log(10), log(floor(n/10)), 15))));

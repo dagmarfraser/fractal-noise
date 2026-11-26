@@ -14,8 +14,8 @@ function [K, info] = harmonicContent(x, fs, f0, options)
 %   THIS IS A DIAGNOSTIC, NOT A SELECTOR OF RECORD. Use info.ratio to see where the harmonics stop standing out, and report a
 %   ladder of K (harmonicTemplate) if anything built on the residual moves with K. A harmonic that is not above the
 %   noise is noise, and removing it carves a notch in the noise; a harmonic that is in the movement and is left behind stays
-%   in the "noise". The rule is the content rule of the PowerLawSimulationPreReg v028 amendment 01; an information-criterion rule
-%   was tried there and failed its acceptance test, so it is not included. Selection by information criterion and a stacked-spectrum
+%   in the "noise". An information-criterion rule
+%   failed its acceptance test, so it is not included. Selection by information criterion and a stacked-spectrum
 %   plot are planned for v2.1.0.
 %
 % INPUTS:

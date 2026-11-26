@@ -155,11 +155,6 @@ function [n, info] = shapeNoise(resid, fs, alpha, options)
 % See also: estimateWhittleAlpha, noiseXu, estimateIRASA, summariseShapeNoiseBatch
 %
 % Toolbox: fractalnoise
-% Extracted from: PowerLawSimulationPreReg src/endToEndSegment_v006.m
-% (rules "detect", "budget", "tol"; chi2inv(1 - p, 1) = 2*erfcinv(p)^2, so
-% no Statistics Toolbox) and src/functions/endMatchedNoise_v001.m, with
-% alphaPWLW_v001 replaced by its toolbox copy estimateWhittleAlpha; legacy
-% path from src/functions/generateLoopClosureNoise_v003.m (shapeXu_local).
 
 arguments
     resid double {mustBeReal}
@@ -306,7 +301,7 @@ end
 end
 
 function [i0, i1, info] = endMatchedSegments(S, rule, tol, budget, minLength)
-% endToEndSegment_v006 (rules "detect", "budget", "tol"); chi2inv(1 - p, 1) written as 2*erfcinv(p)^2 (base MATLAB).
+% Rules "detect", "budget", "tol"; chi2inv(1 - p, 1) written as 2*erfcinv(p)^2 (base MATLAB).
 [N, C] = size(S);
 if N < minLength
     error("shapeNoise:short", "resid has %d samples, fewer than MinLength %d.", N, minLength);
@@ -350,7 +345,7 @@ if flag, hz = info.peakHz; end
 end
 
 function [u, k, ok, dA, nFail, msg] = drawEndMatched(ref, aRef, fs, band, tol, maxDraw)
-% endMatchedNoise_v001 drawAxis, with estimateWhittleAlpha for alphaPWLW_v001.
+% One axis: random-phase draws from the segment, kept when estimateWhittleAlpha matches.
 L = numel(ref);  A = abs(fft(ref - mean(ref)));  h = floor((L - 1) / 2);  sR = std(ref);  ok = false;  dA = NaN;  nFail = 0;  msg = "";
 for k = 1:maxDraw
     Z = zeros(L, 1);  Z(2:h + 1) = A(2:h + 1) .* exp(2i * pi * rand(h, 1));  Z(L:-1:L - h + 1) = conj(Z(2:h + 1));

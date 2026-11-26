@@ -46,9 +46,8 @@ function [resid, fit, info] = harmonicTemplate(x, fs, f0, K, options)
 %   t = (0:1/100:30)';  x = 3*sin(2*pi*0.5*t) + cumsum(randn(size(t)))*0.05;
 %   [r, ~, info] = harmonicTemplate(x, 100, 0.5, 1);   % the 0.5 Hz fundamental removed
 %
-% Reference for the construction: the windowed harmonic regression of the PowerLawSimulationPreReg runner
-% (runLoopClosureFftnoise_v028, templateSubtract_local), generalised from two movement axes to any channels, with the
-% record-too-short case an error instead of a zero residual. Related methods: dynamic harmonic regression (Young, Pedregal
+% The construction generalises a windowed harmonic regression to any number of channels; a record shorter than one window
+% is an error, not a zero residual. Related methods: dynamic harmonic regression (Young, Pedregal
 % & Tych 1999, J Forecasting 18, 369-394), and time-varying harmonic removal in overlap-add frames (Zivanovic et al. 2023,
 % Mech Syst Signal Process 189, 110043).
 %

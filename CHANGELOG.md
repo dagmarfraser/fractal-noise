@@ -1,12 +1,6 @@
 # Changelog
 
-`fractalnoise` follows semantic versioning. The internal `PowerLawSimulationPreReg`
-`_vNNN` suffix convention (e.g. `XuNoise_v002`, `iraAlphaSigma_v003`) does NOT
-carry into this toolbox's releases -- that convention exists to track
-in-place iteration of a single file across a long-running research project's
-session history, which is not this toolbox's situation. Each function's
-docstring states which specific internal vintage it was extracted from, so
-that history is not lost, just relocated to prose rather than the filename.
+`fractalnoise` follows semantic versioning.
 
 ## v2.0.0 -- 2026-11-22
 
