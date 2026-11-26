@@ -1,5 +1,8 @@
 # fractalnoise
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24447648.svg)](https://doi.org/10.5281/zenodo.24447648)
+[![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=dagmarfraser/fractal-noise&file=toolbox/doc/GettingStarted.m)
+
 **Make, match and measure 1/f^alpha noise in MATLAB, including the steep spectra (alpha 3-7) that movement and other behavioural signals have and that most tools were never checked on.**
 
 Use it when you need to:
@@ -14,7 +17,7 @@ Use it when you need to:
 
 Typical users: movement science and motor control, psychophysics, physiology, and anyone who needs coloured noise outside the white-to-brown range (alpha 0-2) that built-in MATLAB generators cover.
 
-MIT licence. Base MATLAB for the generator, the surrogate and the Whittle estimator; Signal Processing Toolbox for the other two. Current release: see [CHANGELOG.md](CHANGELOG.md). Also on MATLAB File Exchange (184251).
+MIT licence. Base MATLAB for the generator, the surrogate and the Whittle estimator; Signal Processing Toolbox for the other two. Current release: see [CHANGELOG.md](CHANGELOG.md). Also on MATLAB File Exchange (184251). To cite the software, use the Zenodo DOI [10.5281/zenodo.24447648](https://doi.org/10.5281/zenodo.24447648) (all versions), or [10.5281/zenodo.24447649](https://doi.org/10.5281/zenodo.24447649) for v2.0.0.
 
 > **v2.0.0.** Two fixes: `estimateIRASA` did not remove oscillatory peaks up to v1.2.0, so its exponent was a plain spectral slope; and `shapeNoise` gave a shallow surrogate about one time in five at alpha 3.5-4.5, so it now builds its surrogate from an end-matched segment of the residual (shorter than the input). Both old behaviours stay available by name. New: `harmonicTemplate` and `harmonicContent` remove and diagnose the periodic part of a record, `shapeNoiseWrapper` and `cetNoiseWrapper` do the whole path in one call, and `summariseShapeNoiseBatch` reports acceptance across many surrogates. Also changed: `shapeNoise` needs at least 120 samples by default and warns when no `AlphaBand` is given, and the wrappers require K. See [Upgrading from 1.x](#upgrading-from-1x).
 

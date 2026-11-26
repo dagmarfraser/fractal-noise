@@ -13,6 +13,14 @@ url: "https://www.mathworks.com/matlabcentral/fileexchange/184251"
 license: MIT
 version: 2.0.0
 date-released: 2026-11-22
+doi: 10.5281/zenodo.24447648
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24447648
+    description: All versions (concept DOI)
+  - type: doi
+    value: 10.5281/zenodo.24447649
+    description: Version 2.0.0
 keywords:
   - colored noise
   - 1/f noise
